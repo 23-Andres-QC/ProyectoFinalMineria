@@ -86,9 +86,9 @@
   métricas predictivas e interpretabilidad con SHAP.
   El conjunto de entrenamiento contiene 2\,460 registros y el conjunto de
   prueba 308 registros, ambos sin duplicados. El mejor modelo final fue
-  \textbf{Bagging de árboles}, con \metric{ROC AUC = 0.8884},
-  \metric{F1 = 0.7196} y \metric{accuracy = 0.8279} en test. El modelo
-  Stacking Top-3 alcanzó un ROC AUC de 0.8875, muy cercano al ganador, pero
+  \textbf{Bagging de árboles}, con \metric{ROC AUC = 0.8975},
+  \metric{F1 = 0.7312} y \metric{accuracy = 0.8377} en test. El modelo
+  Stacking Top-3 alcanzó un ROC AUC de 0.8931, muy cercano al ganador, pero
   sin superarlo. La interpretabilidad SHAP confirma que \code{Glucose} es la
   variable más influyente. Como aporte aplicado, se propone usar el score del
   modelo como mecanismo de priorización para reducir demoras operativas:
@@ -375,11 +375,11 @@ usa \code{Outcome} para imputar.
 \toprule
 \textbf{Variable} & \textbf{NaN} & \textbf{Ceros} & \textbf{\% faltante} \\
 \midrule
-Glucose       & 18   & 0 & 0.73 \\
-BloodPressure & 80   & 0 & 3.25 \\
-SkinThickness & 750  & 0 & 30.49 \\
-Insulin       & 1249 & 0 & 50.77 \\
-BMI           & 29   & 0 & 1.18 \\
+Glucose       & 18  & 0 & 0.73 \\
+BloodPressure & 80  & 0 & 3.25 \\
+SkinThickness & 750 & 0 & 30.49 \\
+Insulin       & 492 & 0 & 20.00 \\
+BMI           & 29  & 0 & 1.18 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -387,10 +387,10 @@ BMI           & 29   & 0 & 1.18 \\
 \subsection{Outliers, Transformación y Escalado}
 
 Los outliers univariados se detectaron con la regla IQR$\times 3$, adecuada
-para variables no normales. \code{Insulin} concentró la mayor cantidad de
-valores extremos: 1\,205 observaciones, equivalentes al 48.98\% del train.
-Además, la distancia de Mahalanobis detectó 167 outliers multivariados
-(6.79\%), usando como umbral el percentil 97.5\% de la distribución
+para variables no normales. \code{Insulin} fue la variable con más valores
+extremos: 55 observaciones, equivalentes al 2.24\% del train.
+Además, la distancia de Mahalanobis detectó 158 outliers multivariados
+(6.42\%), usando como umbral el percentil 97.5\% de la distribución
 chi-cuadrado.
 
 \begin{figure}[H]
@@ -435,7 +435,7 @@ validación cruzada estratificada de 10 folds sobre el train, usando
 exclusivamente para la evaluación final.
 
 Primero se evaluó KNN para $K=1,\ldots,25$. El mejor resultado en validación
-cruzada fue $K=8$, con ROC AUC CV de 0.9215.
+cruzada fue $K=8$, con ROC AUC CV de 0.9229.
 
 \begin{figure}[H]
   \centering
@@ -450,7 +450,7 @@ de árboles, AdaBoost, Gradient Boosting, XGBoost y LightGBM; estos dos
 últimos son implementaciones modernas de gradient boosting para datos
 tabulares \cite{chen2016,ke2017}. Finalmente se
 construyó un \code{StackingClassifier} con los tres mejores modelos por ROC
-AUC del ranking global: Bagging de árboles, Regresión Logística y XGBoost.
+AUC del ranking global: Bagging de árboles, LightGBM y XGBoost.
 
 %=============================================================
 \section{Resultados}
@@ -468,17 +468,17 @@ AUC del ranking global: Bagging de árboles, Regresión Logística y XGBoost.
 \toprule
 \textbf{Modelo} & \textbf{Acc.} & \textbf{F1} & \textbf{Kappa} & \textbf{AUC} & \textbf{Gini} \\
 \midrule
-KNN & 0.7792 & 0.6458 & 0.4857 & 0.8370 & 0.6739 \\
-Naive Bayes & 0.7695 & 0.6635 & 0.4919 & 0.8566 & 0.7131 \\
-SVM & 0.7565 & 0.6073 & 0.4310 & 0.8073 & 0.6146 \\
-Reg. Logística & \textbf{0.8117} & \textbf{0.6848} & \textbf{0.5505} & \textbf{0.8739} & \textbf{0.7478} \\
-MLP & 0.7727 & 0.6277 & 0.4641 & 0.8281 & 0.6562 \\
+KNN & 0.8019 & \textbf{0.6965} & \textbf{0.5507} & 0.8637 & 0.7274 \\
+Naive Bayes & 0.7727 & 0.6729 & 0.5033 & 0.8643 & 0.7285 \\
+SVM & 0.7532 & 0.6042 & 0.4252 & 0.8087 & 0.6173 \\
+Reg. Logística & \textbf{0.8084} & 0.6776 & 0.5414 & \textbf{0.8742} & \textbf{0.7484} \\
+MLP & 0.8052 & 0.6739 & 0.5350 & 0.8609 & 0.7217 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-La Regresión Logística fue el mejor modelo base, con ROC AUC de 0.8739 y
-accuracy de 0.8117. Este resultado es relevante porque muestra que una
+La Regresión Logística fue el mejor modelo base, con ROC AUC de 0.8742 y
+accuracy de 0.8084. Este resultado es relevante porque muestra que una
 frontera lineal regularizada puede competir muy bien en datos tabulares con
 señales clínicas relativamente claras.
 
@@ -508,19 +508,19 @@ señales clínicas relativamente claras.
 \toprule
 \textbf{Modelo} & \textbf{Acc.} & \textbf{F1} & \textbf{Kappa} & \textbf{AUC} & \textbf{Gini} \\
 \midrule
-Bagging & \textbf{0.8279} & \textbf{0.7196} & \textbf{0.5955} & \textbf{0.8884} & \textbf{0.7769} \\
-AdaBoost & 0.7922 & 0.6701 & 0.5188 & 0.8423 & 0.6846 \\
-Gradient Boosting & 0.8247 & 0.7158 & 0.5891 & 0.8582 & 0.7164 \\
-XGBoost & 0.8279 & 0.7166 & 0.5930 & 0.8691 & 0.7381 \\
-LightGBM & 0.8182 & 0.7143 & 0.5815 & 0.8656 & 0.7311 \\
+Bagging & \textbf{0.8377} & \textbf{0.7312} & \textbf{0.6149} & \textbf{0.8975} & \textbf{0.7949} \\
+AdaBoost & 0.8019 & 0.6738 & 0.5316 & 0.8520 & 0.7039 \\
+Gradient Boosting & 0.8052 & 0.6739 & 0.5350 & 0.8640 & 0.7280 \\
+XGBoost & 0.8182 & 0.7083 & 0.5764 & 0.8767 & 0.7534 \\
+LightGBM & 0.8214 & 0.7150 & 0.5853 & 0.8791 & 0.7582 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Bagging de árboles fue el mejor ensamble y también el mejor modelo global.
-Su ventaja principal fue combinar el mejor ROC AUC con el mejor F1 y el
-mejor kappa. XGBoost igualó el accuracy de Bagging, pero quedó por debajo en
-ROC AUC y F1.
+Bagging de árboles fue el mejor ensamble y también el mejor modelo global,
+con el mejor valor en todas las métricas reportadas: accuracy, F1, kappa,
+ROC AUC y Gini. LightGBM y XGBoost fueron los ensambles que más se le
+acercaron, pero quedaron por debajo en ROC AUC y F1.
 
 \begin{figure}[H]
   \centering
@@ -547,17 +547,17 @@ ROC AUC y F1.
 \toprule
 \textbf{Rank} & \textbf{Modelo} & \textbf{AUC} & \textbf{F1} \\
 \midrule
-1 & Bagging de árboles & \textbf{0.8884} & \textbf{0.7196} \\
-2 & Stacking Top-3 & 0.8875 & 0.7128 \\
-3 & Regresión Logística & 0.8739 & 0.6848 \\
-4 & XGBoost & 0.8691 & 0.7166 \\
-5 & LightGBM & 0.8656 & 0.7143 \\
-6 & Gradient Boosting & 0.8582 & 0.7158 \\
-7 & Naive Bayes & 0.8566 & 0.6635 \\
-8 & AdaBoost & 0.8423 & 0.6701 \\
-9 & KNN & 0.8370 & 0.6458 \\
-10 & MLP & 0.8281 & 0.6277 \\
-11 & SVM & 0.8073 & 0.6073 \\
+1 & Bagging de árboles & \textbf{0.8975} & \textbf{0.7312} \\
+2 & Stacking Top-3 & 0.8931 & 0.7196 \\
+3 & LightGBM & 0.8791 & 0.7150 \\
+4 & XGBoost & 0.8767 & 0.7083 \\
+5 & Regresión Logística & 0.8742 & 0.6776 \\
+6 & Naive Bayes & 0.8643 & 0.6729 \\
+7 & Gradient Boosting & 0.8640 & 0.6739 \\
+8 & KNN & 0.8637 & 0.6965 \\
+9 & MLP & 0.8609 & 0.6739 \\
+10 & AdaBoost & 0.8520 & 0.6738 \\
+11 & SVM & 0.8087 & 0.6042 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -569,9 +569,9 @@ ROC AUC y F1.
   \label{fig:metricas_globales}
 \end{figure}
 
-El Stacking Top-3 combinó Bagging, Regresión Logística y XGBoost, usando
-Regresión Logística como meta-aprendiz. Alcanzó ROC AUC de 0.8875, apenas
-0.0009 por debajo del Bagging individual. Por tanto, aunque el stacking es
+El Stacking Top-3 combinó Bagging, LightGBM y XGBoost, usando
+Regresión Logística como meta-aprendiz. Alcanzó ROC AUC de 0.8931, apenas
+0.0044 por debajo del Bagging individual. Por tanto, aunque el stacking es
 competitivo, no se selecciona como modelo final porque no mejora al ganador.
 
 \begin{figure}[H]
@@ -618,7 +618,7 @@ Shapley para explicar contribuciones de variables a nivel global y local
 Bagging de árboles de \code{scikit-learn} no es compatible directamente con
 \code{TreeExplainer}, se usó \code{KernelExplainer} sobre una muestra
 reducida del ganador. Además, se incluyó un análisis complementario con
-\code{TreeExplainer} sobre XGBoost, por ser el mejor modelo de árbol
+\code{TreeExplainer} sobre LightGBM, por ser el mejor modelo de árbol
 compatible con ese método.
 
 \begin{figure}[H]
@@ -638,7 +638,7 @@ compatible con ese método.
 \begin{figure}[H]
   \centering
   \includegraphics[width=\columnwidth]{23_complemento_arbol_importancia_global_shap.png}
-  \caption{Importancia global SHAP complementaria para XGBoost.}
+  \caption{Importancia global SHAP complementaria para LightGBM.}
   \label{fig:shap_bar_xgb}
 \end{figure}
 
@@ -727,10 +727,10 @@ tienen mayor probabilidad de requerir diagnóstico y manejo temprano
   \item La variable más importante para distinguir pacientes con y sin
   diabetes fue \code{Glucose}, confirmada por EDA, Mann-Whitney U, tasa por
   categorías y SHAP.
-  \item El mejor modelo base fue Regresión Logística, con ROC AUC de 0.8739.
-  \item El mejor modelo global fue Bagging de árboles, con ROC AUC de 0.8884,
-  F1 de 0.7196 y accuracy de 0.8279.
-  \item El Stacking Top-3 fue altamente competitivo, con ROC AUC de 0.8875,
+  \item El mejor modelo base fue Regresión Logística, con ROC AUC de 0.8742.
+  \item El mejor modelo global fue Bagging de árboles, con ROC AUC de 0.8975,
+  F1 de 0.7312 y accuracy de 0.8377.
+  \item El Stacking Top-3 fue altamente competitivo, con ROC AUC de 0.8931,
   pero no superó al Bagging individual.
   \item La integración del modelo con un circuito clínico real debería
   enfocarse en priorización de riesgo, no en diagnóstico autónomo.
