@@ -81,7 +81,7 @@
   afectadas y la diabetes fue reportada como la séptima causa de muerte en el
   país. Sobre ese problema se desarrolla un análisis exploratorio del dataset,
   tratamiento de valores faltantes, detección y control de outliers,
-  transformación de variables, escalado robusto, discretización clínica,
+  transformación de variables, escalado robusto, discretización por cuantiles,
   entrenamiento de modelos base, modelos de ensamble, stacking, evaluación por
   métricas predictivas e interpretabilidad con SHAP.
   El conjunto de entrenamiento contiene 2\,460 registros y el conjunto de
@@ -91,9 +91,11 @@
   Stacking Top-3 alcanzó un ROC AUC de 0.8931, muy cercano al ganador, pero
   sin superarlo. La interpretabilidad SHAP confirma que \code{Glucose} es la
   variable más influyente. Como aporte aplicado, se propone usar el score del
-  modelo como mecanismo de priorización para reducir demoras operativas:
-  derivar más rápido a confirmación con glucemia, HbA1c o PTOG a los
-  pacientes con mayor riesgo.
+  modelo como mecanismo de priorización: dado que su cálculo requiere las
+  variables de entrada del modelo ---incluida \code{Glucose}---, su uso
+  coherente es priorizar la confirmación diagnóstica y el seguimiento después
+  de una medición inicial, y no reemplazar ni decidir de forma autónoma la
+  solicitud de pruebas clínicas.
 
   \vspace{4pt}
   \noindent\textbf{Palabras clave}---diabetes; minería de datos; machine
@@ -223,7 +225,11 @@ refuerza la necesidad de priorizar mejor a los pacientes con mayor riesgo.
 El modelo desarrollado no pretende diagnosticar de forma autónoma. Su función
 aplicada es actuar como un \textbf{filtro de priorización}: ordenar pacientes
 por probabilidad estimada de diabetes y recomendar confirmación rápida para
-los casos con mayor score. En establecimientos con HbA1c disponible, el
+los casos con mayor score. Es importante precisar que el cálculo del score
+requiere las variables de entrada del modelo, incluida \code{Glucose}; por
+ello, el modelo no decide si tomar o no una primera prueba, sino que prioriza
+la confirmación diagnóstica y el seguimiento una vez que se dispone de una
+medición inicial. En establecimientos con HbA1c disponible, el
 paciente de alto riesgo podría pasar a prueba el mismo día aunque no haya
 llegado en ayunas. En establecimientos sin HbA1c, el score puede priorizar
 una cita corta para glucemia en ayunas o PTOG. Así, el valor del modelo está
@@ -261,10 +267,14 @@ hallazgos estadísticos del análisis exploratorio.
 %=============================================================
 
 El análisis utiliza los archivos \code{Training.csv} y \code{Testing.csv},
-derivados del dataset Pima Indians Diabetes publicado en Kaggle
-\cite{kaggle}.
-El entrenamiento contiene 2\,460 observaciones y 9 columnas; el test contiene
-308 observaciones y 9 columnas. En ambos casos no se encontraron duplicados.
+correspondientes a una versión del dataset Pima Indians Diabetes disponible en
+Kaggle, ya particionada en entrenamiento y prueba \cite{kaggle}. El conjunto de
+entrenamiento contiene 2\,460 observaciones y 9 columnas, y el de prueba 308
+observaciones y 9 columnas. No se encontraron filas duplicadas dentro de cada
+archivo. Adicionalmente se verificó la coincidencia entre train y test: se
+identificaron 6 registros idénticos, equivalentes al 1.9\% del test, un volumen
+bajo cuyo efecto sobre la evaluación es marginal y que se documenta en la
+sección de Limitaciones.
 
 \begin{table}[H]
 \centering
@@ -336,7 +346,10 @@ mayor solapamiento entre clases.
 Se aplicó Shapiro-Wilk para evaluar normalidad. Como las variables no
 siguieron distribución normal, la correlación entre predictores se evaluó
 con Spearman y la relación de cada predictor con \code{Outcome} mediante
-Mann-Whitney U con tamaño de efecto rank-biserial.
+Mann-Whitney U con tamaño de efecto rank-biserial. Conviene señalar que, en
+muestras grandes, Shapiro-Wilk es muy sensible y tiende a rechazar la
+normalidad ante desviaciones pequeñas; por ello, su resultado se usó como
+apoyo para elegir pruebas no paramétricas y no como criterio absoluto.
 
 \begin{figure}[H]
   \centering
@@ -363,8 +376,12 @@ El conjunto de entrenamiento no contiene ceros en las variables fisiológicas
 críticas, pero sí contiene valores \code{NaN}. La imputación se diseñó con
 criterio idéntico para train y test: se reemplazan ceros imposibles por
 \code{NaN} y luego se imputan los faltantes con medianas globales calculadas
-solo sobre el conjunto de entrenamiento. Este diseño evita data leakage y no
-usa \code{Outcome} para imputar.
+solo sobre el conjunto de entrenamiento. Este diseño evita la fuga de
+información del test hacia el entrenamiento y no usa \code{Outcome} para
+imputar. No obstante, la imputación, la winsorización y el escalado se
+ajustaron sobre todo el conjunto de entrenamiento antes de la validación
+cruzada; en un diseño estricto, cada fold debería recalcular sus propios
+parámetros dentro de un \code{Pipeline}, lo que se discute en Limitaciones.
 
 \begin{table}[H]
 \centering
@@ -391,7 +408,9 @@ para variables no normales. \code{Insulin} fue la variable con más valores
 extremos: 55 observaciones, equivalentes al 2.24\% del train.
 Además, la distancia de Mahalanobis detectó 158 outliers multivariados
 (6.42\%), usando como umbral el percentil 97.5\% de la distribución
-chi-cuadrado.
+chi-cuadrado. Dado que este umbral supone normalidad multivariada, que no se
+cumple en estos datos, la distancia de Mahalanobis se interpreta como un
+análisis exploratorio y no como una regla definitiva de exclusión.
 
 \begin{figure}[H]
   \centering
@@ -414,11 +433,15 @@ asimetría positiva fuerte (\code{DiabetesPedigreeFunction} y \code{Age}) se
 transformaron con \code{log1p}. Finalmente, se usó \code{RobustScaler}, que
 escala con mediana e IQR y es más estable ante valores extremos.
 
-\subsection{Discretización Clínica}
+\subsection{Discretización por Cuantiles}
 
-Para interpretación clínica se discretizaron variables relevantes con
-\code{pd.qcut}. El análisis de tasa de diabetes por nivel de glucosa mostró
-un aumento claro del riesgo en la categoría alta.
+Para fines exploratorios se discretizaron variables relevantes con
+\code{pd.qcut}, que genera grupos de igual frecuencia (terciles). Esta
+discretización por cuantiles permite comparar la tasa de diabetes entre grupos
+relativos de glucosa, pero no corresponde a los puntos de corte clínicos
+oficiales (por ejemplo, glucemia en ayunas $\geq 126$ mg/dL). El análisis de
+tasa de diabetes por nivel de glucosa mostró un aumento claro del riesgo en la
+categoría alta.
 
 \begin{figure}[H]
   \centering
@@ -435,7 +458,13 @@ validación cruzada estratificada de 10 folds sobre el train, usando
 exclusivamente para la evaluación final.
 
 Primero se evaluó KNN para $K=1,\ldots,25$. El mejor resultado en validación
-cruzada fue $K=8$, con ROC AUC CV de 0.9229.
+cruzada fue $K=8$, con ROC AUC CV de 0.9229. Este valor es superior al ROC AUC
+de KNN en el test independiente (0.8637). La diferencia es esperable: la
+validación cruzada se calculó sobre el train, cuyo preprocesamiento se ajustó
+antes de la CV, lo que vuelve las estimaciones de CV algo optimistas; en KNN el
+efecto se acentúa por su sensibilidad a la escala y a la densidad local.
+Integrar el preprocesamiento dentro del pipeline de validación cruzada
+reduciría esta brecha (véase Limitaciones).
 
 \begin{figure}[H]
   \centering
@@ -449,8 +478,14 @@ Regresión Logística y MLP. Después se entrenaron cinco ensambles: Bagging
 de árboles, AdaBoost, Gradient Boosting, XGBoost y LightGBM; estos dos
 últimos son implementaciones modernas de gradient boosting para datos
 tabulares \cite{chen2016,ke2017}. Finalmente se
-construyó un \code{StackingClassifier} con los tres mejores modelos por ROC
-AUC del ranking global: Bagging de árboles, LightGBM y XGBoost.
+construyó un \code{StackingClassifier} con los tres modelos de mayor ROC AUC en
+la comparación global (Bagging de árboles, LightGBM y XGBoost) como estimadores
+base y Regresión Logística como meta-aprendiz, generando las meta-características
+con validación cruzada interna de 10 folds. Cabe aclarar que esa comparación
+global se realizó sobre el test, por lo que la selección del trío para el
+stacking se apoya en el desempeño de test; este punto se detalla en
+Limitaciones. La elección del modelo final, en cambio, no depende de dicha
+selección, pues el Bagging es individualmente el mejor en todas las métricas.
 
 %=============================================================
 \section{Resultados}
@@ -587,7 +622,12 @@ El análisis de lift evalúa la utilidad práctica del score predictivo para
 priorizar pacientes de mayor riesgo. Un lift superior a 1 indica que el
 modelo captura más casos positivos que una selección aleatoria. Las curvas
 de lift muestran que los modelos con mejor ranking concentran una mayor tasa
-de positivos en los primeros deciles.
+de positivos en los primeros deciles. Para el modelo ganador (Bagging), el
+decil de mayor score (10\% superior) alcanza una tasa de positivos de 80.6\%
+frente a una tasa base de 30.2\% ---un lift de 2.67--- y captura el 26.9\% de
+todos los casos con diabetes del test; al ampliar al 20\% de mayor score se
+captura el 51.6\% de los positivos. Estas cifras cuantifican la utilidad del
+score para priorización.
 
 \begin{figure}[H]
   \centering
@@ -616,8 +656,10 @@ La interpretabilidad se trabajó con SHAP, un enfoque basado en valores de
 Shapley para explicar contribuciones de variables a nivel global y local
 \cite{lundberg2017}. Dado que el modelo ganador
 Bagging de árboles de \code{scikit-learn} no es compatible directamente con
-\code{TreeExplainer}, se usó \code{KernelExplainer} sobre una muestra
-reducida del ganador. Además, se incluyó un análisis complementario con
+\code{TreeExplainer}, se usó \code{KernelExplainer} para explicar la
+probabilidad de la clase positiva del ganador, con 80 observaciones de
+entrenamiento como background y 40 instancias de test explicadas
+(\code{nsamples}$=200$). Además, se incluyó un análisis complementario con
 \code{TreeExplainer} sobre LightGBM, por ser el mejor modelo de árbol
 compatible con ese método.
 
@@ -682,8 +724,9 @@ cuando se pierde continuidad entre resultado anormal y confirmación médica.
 El modelo puede contribuir en tres puntos:
 
 \begin{enumerate}[leftmargin=1.3em,itemsep=1pt]
-  \item \textbf{Primera consulta:} usar el score para clasificar pacientes
-  sospechosos en riesgo alto, medio y bajo.
+  \item \textbf{Triaje tras la medición inicial:} una vez registradas las
+  variables de entrada del paciente ---incluida una medición de glucosa---,
+  usar el score para clasificar a los pacientes en riesgo alto, medio y bajo.
   \item \textbf{Laboratorio:} priorizar HbA1c o glucemia confirmatoria para
   los pacientes con score alto, reduciendo visitas repetidas.
   \item \textbf{Seguimiento:} generar una lista ordenada de pacientes que no
@@ -716,14 +759,50 @@ tiempos muertos, mejorar detección oportuna y concentrar recursos en quienes
 tienen mayor probabilidad de requerir diagnóstico y manejo temprano
 \cite{ops2024}.
 
+\subsection{Limitaciones}
+
+El estudio presenta varias limitaciones que conviene declarar de forma
+explícita:
+
+\begin{enumerate}[leftmargin=1.3em,itemsep=1pt]
+  \item \textbf{Validez externa.} El modelo se entrenó y evaluó sobre el
+  dataset Pima Indians. El contexto peruano motiva y justifica el problema,
+  pero los resultados no están validados en población peruana; por lo tanto,
+  no debe asumirse transferibilidad directa a establecimientos del país.
+  \item \textbf{Preprocesamiento y validación cruzada.} La imputación, la
+  winsorización y el escalado se ajustaron sobre todo el conjunto de
+  entrenamiento antes de la validación cruzada. Aunque no hay fuga del test
+  hacia el train, las métricas de CV pueden ser levemente optimistas; el
+  diseño ideal es encapsular el preprocesamiento en un \code{Pipeline} para
+  que cada fold recalcule sus parámetros.
+  \item \textbf{Selección del stacking.} El trío de modelos base del stacking
+  se eligió a partir de la comparación global, calculada sobre el test. Esto
+  introduce una ventaja optimista en la métrica del stacking. El modelo final
+  seleccionado (Bagging) no depende de esa elección, pues es el mejor de forma
+  individual en todas las métricas.
+  \item \textbf{Coincidencias train-test.} Se detectaron 6 registros idénticos
+  entre train y test (1.9\% del test). Su efecto sobre las métricas es
+  marginal, pero constituye una pequeña fuente de fuga que un flujo estricto
+  debería eliminar.
+  \item \textbf{Discretización por cuantiles.} La discretización de glucosa se
+  realizó con cuantiles (terciles), útil para comparar riesgo relativo, y no
+  con los umbrales clínicos oficiales; por ello, su lectura es exploratoria.
+  \item \textbf{Dependencia de la variable de entrada.} El score requiere
+  \code{Glucose} como insumo, de modo que el modelo apoya la priorización de
+  la confirmación y el seguimiento posteriores a una medición inicial, no la
+  decisión de solicitar la primera prueba.
+\end{enumerate}
+
 %=============================================================
 \section{Conclusiones}
 %=============================================================
 
 \begin{enumerate}[leftmargin=1.3em,itemsep=2pt]
-  \item El pipeline desarrollado es consistente y evita data leakage: la
-  imputación, winsorización, transformación y escala se ajustan con train y
-  luego se aplican a test.
+  \item El pipeline desarrollado es consistente y evita la fuga de información
+  del test hacia el entrenamiento: la imputación, winsorización, transformación
+  y escala se ajustan con el train y luego se aplican al test. El principal
+  margen de mejora metodológico es incorporar ese preprocesamiento dentro de
+  la validación cruzada para reducir el optimismo de las métricas de CV.
   \item La variable más importante para distinguir pacientes con y sin
   diabetes fue \code{Glucose}, confirmada por EDA, Mann-Whitney U, tasa por
   categorías y SHAP.
@@ -739,8 +818,9 @@ tienen mayor probabilidad de requerir diagnóstico y manejo temprano
   seguimiento en atención primaria.
   \item A partir de la investigación inicial, el principal aporte operativo
   del modelo sería reducir el tiempo entre primera sospecha y confirmación:
-  los pacientes con score alto deberían pasar primero a HbA1c, glucemia en
-  ayunas o PTOG según disponibilidad local.
+  una vez disponibles las variables de entrada, los pacientes con score alto
+  deberían priorizarse para confirmación (HbA1c, glucemia en ayunas o PTOG,
+  según disponibilidad local) y seguimiento.
   \item El modelo también puede ayudar a reducir congestión: si un consultorio
   atiende alrededor de 16--20 pacientes por turno, ordenar por riesgo permite
   usar los cupos clínicos y de laboratorio con mayor eficiencia.
@@ -753,9 +833,13 @@ tienen mayor probabilidad de requerir diagnóstico y manejo temprano
 Como trabajo futuro se recomienda validar el modelo con datos locales
 peruanos, incorporar variables de laboratorio como HbA1c o glucosa en ayunas
 cuando estén disponibles, calibrar probabilidades con métodos como Platt o
-isotonic regression, evaluar fairness por edad y región, y convertir el
-artefacto exportado \code{mejor\_modelo\_diabetes.pkl} en una herramienta
-simple de inferencia para nuevos pacientes.
+isotonic regression, y evaluar fairness por edad y región. En el plano
+metodológico, se recomienda encapsular todo el preprocesamiento dentro de un
+\code{Pipeline} de validación cruzada, seleccionar los componentes del stacking
+mediante ROC AUC promedio en CV sobre el train, y eliminar las coincidencias
+exactas entre train y test. Finalmente, se propone convertir el artefacto
+exportado \code{mejor\_modelo\_diabetes.pkl} en una herramienta simple de
+inferencia para nuevos pacientes.
 
 %=============================================================
 \section*{Agradecimientos}
