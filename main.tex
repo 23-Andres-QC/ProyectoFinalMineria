@@ -61,6 +61,10 @@
     {\LARGE\bfseries Modelos Predictivos de Machine Learning para la\\[3pt]
     Clasificación de Diabetes en el Dataset Pima Indians}\\[8pt]
     {\normalsize
+      \textbf{Integrantes}\\[2pt]
+      ANGEL AGUILAR CONTRERAS \quad
+      ANDRES QUILICHE CHAVEZ \quad
+      RONAL AYBAR WALDO\\[3pt]
       Proyecto Final -- Minería de Datos\\
       Universidad ESAN, Facultad de Ingeniería de Tecnologías de la Información\\
       Lima, Perú
@@ -225,6 +229,32 @@ llegado en ayunas. En establecimientos sin HbA1c, el score puede priorizar
 una cita corta para glucemia en ayunas o PTOG. Así, el valor del modelo está
 en reducir esperas, visitas innecesarias y pérdida de seguimiento, no en
 reemplazar el criterio clínico.
+
+%=============================================================
+\section{Revisión de Literatura}
+%=============================================================
+
+La literatura sobre predicción de diabetes con machine learning suele
+trabajar con datos tabulares clínicos, donde las variables antropométricas,
+bioquímicas y demográficas permiten estimar riesgo mediante clasificadores
+supervisados. Revisiones previas han mostrado que algoritmos como SVM, redes
+neuronales, Naive Bayes, árboles de decisión y métodos de ensamble han sido
+ampliamente usados en problemas de diabetes \cite{kavakiotis2017,sisodia2018}.
+
+En datos tabulares, los métodos de ensamble suelen ser competitivos porque
+combinan múltiples modelos débiles o moderados para reducir varianza o sesgo.
+Bagging promedia árboles entrenados sobre muestras bootstrap, mientras que
+boosting entrena modelos secuenciales que corrigen errores anteriores.
+Implementaciones como XGBoost y LightGBM han destacado por su eficiencia y
+regularización en problemas de clasificación \cite{chen2016,ke2017}.
+
+No obstante, el rendimiento predictivo no es suficiente en salud. Un modelo
+de apoyo clínico debe ser interpretable, trazable y compatible con decisiones
+operativas. Por ello, SHAP se usa como técnica de explicación para estimar la
+contribución de cada variable a las predicciones del modelo
+\cite{lundberg2017}. En este proyecto, SHAP permite verificar si los
+predictores más influyentes coinciden con la evidencia clínica y con los
+hallazgos estadísticos del análisis exploratorio.
 
 %=============================================================
 \section{Datos y Variables}
@@ -726,6 +756,15 @@ cuando estén disponibles, calibrar probabilidades con métodos como Platt o
 isotonic regression, evaluar fairness por edad y región, y convertir el
 artefacto exportado \code{mejor\_modelo\_diabetes.pkl} en una herramienta
 simple de inferencia para nuevos pacientes.
+
+%=============================================================
+\section*{Agradecimientos}
+%=============================================================
+
+Los autores agradecen a la Universidad ESAN y al curso de Minería de Datos
+por el marco académico para el desarrollo del proyecto. Asimismo, se reconoce
+el uso del dataset Pima Indians Diabetes y de fuentes públicas nacionales
+para contextualizar la problemática de diabetes en el Perú.
 
 %=============================================================
 \section*{Referencias}
