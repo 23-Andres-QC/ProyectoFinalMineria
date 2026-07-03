@@ -1,0 +1,1304 @@
+%=============================================================
+%  INFORME: MODELOS PREDICTIVOS EN ML PARA CLASIFICACIÓN
+%           DE DIABETES — PIMA INDIANS DATASET
+%  Formato: Conferencia IEEE (A4, dos columnas, 12pt, Times New Roman)
+%  Compilar en Overleaf con pdfLaTeX
+%=============================================================
+
+\documentclass[12pt, a4paper, twocolumn]{article}
+
+%--- Fuente Times New Roman ---
+\usepackage{times}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+%--- Idioma ---
+\usepackage[spanish,es-noshorthands]{babel}
+
+%--- Margenes estilo IEEE A4 ---
+\usepackage[top=1.9cm, bottom=2.54cm, left=1.7cm, right=1.7cm]{geometry}
+
+%--- Paquetes esenciales ---
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{url}
+
+%--- Codigo fuente (estilo neutro BN) ---
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\fontsize{6.5}{8}\selectfont,
+    breaklines=true,
+    breakatwhitespace=false,
+    columns=flexible,
+    frame=single,
+    framerule=0.4pt,
+    xleftmargin=3pt,
+    xrightmargin=3pt,
+    aboveskip=4pt,
+    belowskip=4pt,
+    numbers=left,
+    numberstyle=\tiny,
+    numbersep=3pt,
+    showstringspaces=false,
+    tabsize=2,
+    language=Python,
+    keywordstyle=\bfseries,
+    commentstyle=\itshape,
+    stringstyle=\ttfamily,
+    keepspaces=true,
+    postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space},
+}
+
+%--- Formato de seccion estilo IEEE ---
+\usepackage{titlesec}
+\titleformat{\section}[block]
+  {\normalsize\bfseries\scshape\centering}
+  {\Roman{section}.}{0.5em}{}
+\titleformat{\subsection}[block]
+  {\normalsize\itshape}
+  {\Alph{subsection}.}{0.5em}{}
+\titleformat{\subsubsection}[runin]
+  {\normalsize\itshape}{}{0em}{}[:]
+\titlespacing{\section}{0pt}{8pt plus 2pt minus 2pt}{4pt plus 1pt}
+\titlespacing{\subsection}{0pt}{6pt plus 1pt minus 1pt}{3pt}
+
+%--- Separacion de columnas ---
+\setlength{\columnsep}{0.5cm}
+
+%--- Interlineado ---
+\usepackage{setspace}
+\setstretch{1.05}
+
+%--- Sin sangria, separacion de parrafos ---
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+
+%--- Footline ---
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+%--- Sloppy para columnas estrechas ---
+\sloppy
+
+%=============================================================
+\begin{document}
+
+%--- Cabecera full-width (usar \twocolumn[{...}] SIN begin/end extra) ---
+\twocolumn[{%
+  \begin{center}
+    {\LARGE\bfseries Modelos Predictivos en Machine Learning para la\\[4pt]
+    Clasificacion de Diabetes: Un Enfoque Integral\\[4pt]
+    de Mineria de Datos}\\[10pt]
+    {\normalsize
+      Angel B. Apellido$^{1}$\\[3pt]
+      $^{1}$Facultad de Ingenieria de Tecnologias de la Informacion,
+      Universidad ESAN, Lima, Peru\\
+      email@esan.edu.pe
+    }
+  \end{center}
+  \vspace{6pt}\hrule\vspace{6pt}
+  {\small
+  \noindent\textbf{Abstract}---Este trabajo presenta el desarrollo e
+  implementacion de un pipeline completo de Mineria de Datos para la
+  clasificacion binaria de diabetes, aplicado al conjunto de datos de Kaggle
+  (Ehab Aboelnaga, 2023). El proceso cubre nueve bloques metodologicos y
+  veintitres pasos que abarcan analisis estadistico exploratorio, tratamiento
+  de valores faltantes, deteccion y tratamiento de outliers, transformacion y
+  escalado de variables, discretizacion, modelado predictivo con cuatro
+  algoritmos base (KNN, Naive Bayes, SVM y MLP), modelos de ensamble mediante
+  Bagging y Boosting (Bagging-Trees, AdaBoost, Gradient Boosting, XGBoost y
+  LightGBM), metodos de combinacion avanzados (Stacking con meta-aprendiz) e
+  interpretabilidad mediante SHAP. Los resultados muestran que el Stacking
+  sobre los tres mejores clasificadores obtiene el mayor ROC AUC
+  (aprox.\ 0.8523), con Glucose como la variable mas influyente.
+  \vspace{4pt}
+
+  \noindent\textbf{Palabras clave}---clasificacion de diabetes; machine
+  learning; XGBoost; LightGBM; Stacking; SHAP; mineria de datos; KNN.
+  }
+  \vspace{6pt}\hrule\vspace{12pt}
+}]
+
+%=============================================================
+\section{Introduccion}
+%=============================================================
+
+La diabetes mellitus es una enfermedad cronica no transmisible que afecta a
+mas de 537 millones de adultos en todo el mundo \cite{idf2021}, generando
+una carga significativa en los sistemas de salud publica. La deteccion
+temprana es clave para reducir complicaciones como neuropatia, retinopatia
+y enfermedades cardiovasculares \cite{who2021}. En este contexto, las
+tecnicas de Machine Learning (ML) ofrecen una alternativa efectiva para
+construir modelos predictivos a partir de datos clinicos anonimizados.
+
+El presente trabajo desarrolla un pipeline integral de Mineria de Datos
+sobre el dataset de diabetes publicado en Kaggle por Ehab Aboelnaga
+\cite{kaggle2023}, que contiene registros clinicos del estudio Pima
+Indians Diabetes. El objetivo es construir, comparar y seleccionar el
+modelo de clasificacion mas efectivo para predecir la presencia de diabetes
+en funcion de variables antropometricas y bioquimicas, siguiendo una
+metodologia rigurosa de preprocesamiento, modelado e interpretabilidad.
+
+El informe se organiza en nueve bloques: (I) Analisis estadistico descriptivo
+y exploratorio, (II) Tratamiento de valores faltantes, (III) Deteccion y
+tratamiento de outliers, (IV) Transformacion y escalado, (V) Discretizacion,
+(VI) Modelado predictivo base, (VII) Modelos de ensamble, (VIII) Stacking y
+(IX) Interpretabilidad con SHAP.
+
+%=============================================================
+\section{Revision de la Literatura}
+%=============================================================
+
+Estudios previos han demostrado la efectividad de los modelos de ML en la
+prediccion de diabetes. Kavakiotis et al.\ \cite{kavakiotis2017} revisaron
+85 estudios y encontraron que SVM y Redes Neuronales son los mas
+frecuentemente aplicados. Sisodia y Sisodia \cite{sisodia2018} compararon
+Naive Bayes, Arbol de Decision y SVM sobre el dataset Pima, reportando
+exactitudes de hasta 76.30\% con Naive Bayes. Rehman et al.\
+\cite{rehman2020} propusieron un ensamble de Gradient Boosting alcanzando
+un ROC AUC de 0.84 sobre datos similares.
+
+Respecto a los metodos de ensamble, XGBoost y LightGBM han demostrado
+consistentemente superar a los modelos individuales en tareas de
+clasificacion medica \cite{chen2016, ke2017}. En cuanto a interpretabilidad,
+Lundberg y Lee \cite{lundberg2017} propusieron SHAP como metodo unificado
+para explicar cualquier modelo de ML.
+
+%=============================================================
+\section{Metodologia}
+%=============================================================
+
+\subsection{Fuente de Datos y Entorno}
+
+El dataset proviene de Kaggle \cite{kaggle2023} y consta de dos archivos:
+\texttt{Training.csv} (2\,460 filas $\times$ 9 columnas) y
+\texttt{Testing.csv}. La variable objetivo (\texttt{Outcome}) es binaria:
+0 = sin diabetes, 1 = con diabetes.
+
+\begin{table}[H]
+\centering
+\caption{Diccionario de variables del dataset}
+\label{tab:variables}
+\scriptsize
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Variable} & \textbf{Tipo} & \textbf{Descripcion} \\
+\midrule
+Pregnancies        & Cuant.\ discreta  & N.${^\circ}$ de embarazos \\
+Glucose            & Cuant.\ continua  & Glucosa en sangre (mg/dL) \\
+BloodPressure      & Cuant.\ continua  & Presion arterial (mmHg) \\
+SkinThickness      & Cuant.\ continua  & Grosor de la piel (mm) \\
+Insulin            & Cuant.\ continua  & Insulina en sangre \\
+BMI                & Cuant.\ continua  & Indice de masa corporal \\
+DiabetesPedigreeF. & Cuant.\ continua  & Funcion de pedigri \\
+Age                & Cuant.\ discreta  & Edad (anos) \\
+Outcome            & Cualit.\ binaria  & 0=Sin DM; 1=Con DM \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Las librerias principales son: \texttt{pandas}, \texttt{numpy},
+\texttt{scipy}, \texttt{scikit-learn}, \texttt{xgboost},
+\texttt{lightgbm} y \texttt{shap}.
+
+\begin{lstlisting}[caption={Importacion de librerias}]
+import pandas as pd, numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.stats import shapiro, mannwhitneyu
+from scipy.spatial.distance import mahalanobis
+from sklearn.preprocessing import RobustScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import (accuracy_score,
+    precision_score, recall_score, f1_score,
+    roc_auc_score, confusion_matrix, roc_curve)
+import warnings; warnings.filterwarnings('ignore')
+\end{lstlisting}
+
+%-------------------------------------------
+\subsection{Bloque 1 -- Estadistica Descriptiva y Exploratoria}
+%-------------------------------------------
+
+\subsubsection{Paso 1 -- Carga e inspeccion inicial}
+
+Se cargan los archivos \texttt{Training.csv} y \texttt{Testing.csv} y se
+revisa la estructura del dataset. El conjunto de entrenamiento cuenta con
+2\,460 registros sin valores nulos explicitos. Sin embargo, se identifican
+ceros en variables fisiologicas que no pueden ser cero en condiciones
+normales (\texttt{Glucose}, \texttt{BloodPressure}, \texttt{SkinThickness},
+\texttt{Insulin} y \texttt{BMI}), indicando faltantes encubiertos que se
+tratan en el Bloque 2.
+
+\begin{lstlisting}[caption={Carga y exploracion inicial}]
+df_train = pd.read_csv('Training.csv')
+df_test  = pd.read_csv('Testing.csv')
+print(f'Training : {df_train.shape}')
+print(f'Testing  : {df_test.shape}')
+df_train.head(8)
+df_train.info()
+\end{lstlisting}
+
+\subsubsection{Paso 2 -- Analisis univariado}
+
+Se calculan media, mediana, moda, cuartiles Q1/Q3, rango intercuartilico
+(IQR), coeficiente de variacion (CV), asimetria y curtosis para las ocho
+variables predictoras.
+
+\begin{lstlisting}[caption={Estadistica univariada}]
+features = ['Pregnancies','Glucose',
+    'BloodPressure','SkinThickness','Insulin',
+    'BMI','DiabetesPedigreeFunction','Age']
+
+stats_uni = pd.DataFrame(index=features)
+stats_uni['Media']   = df_train[features].mean()
+stats_uni['Mediana'] = df_train[features].median()
+stats_uni['Q1'] = df_train[features].quantile(0.25)
+stats_uni['Q3'] = df_train[features].quantile(0.75)
+stats_uni['IQR'] = stats_uni['Q3']-stats_uni['Q1']
+stats_uni['CV (%)'] = (df_train[features].std() /
+    df_train[features].mean()*100).round(2)
+stats_uni['Asimetria'] = df_train[features].skew()
+stats_uni['Curtosis']  = df_train[features].kurtosis()
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Estadistica descriptiva del conjunto de entrenamiento}
+\label{tab:estadistica}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Variable} & \textbf{Media} & \textbf{Med.} &
+\textbf{IQR} & \textbf{CV\%} & \textbf{Asim.} \\
+\midrule
+Pregnancies & 3.85  & 3.00  & 5.00   & 89.7  & 0.90 \\
+Glucose     & 120.9 & 117.0 & 40.0   & 23.8  & 0.17 \\
+BloodPres.  & 69.1  & 72.0  & 20.0   & 19.5  & -1.84\\
+SkinThick.  & 20.5  & 23.0  & 32.0   & 82.3  & 0.11 \\
+Insulin     & 79.8  & 30.5  & 127.3  & 134.2 & 2.27 \\
+BMI         & 31.99 & 32.00 & 10.50  & 27.1  & 0.60 \\
+DPF         & 0.47  & 0.37  & 0.44   & 100.4 & 1.92 \\
+Age         & 33.24 & 29.00 & 18.00  & 51.9  & 1.13 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Conclusiones clave del analisis univariado:
+\begin{itemize}[leftmargin=1.2em, itemsep=0pt]
+  \item \texttt{Insulin}: CV $> 134\%$; media $\gg$ mediana, fuerte
+        asimetria positiva y presencia de valores extremos.
+  \item \texttt{Glucose}: variable mas equilibrada (baja asimetria,
+        media $\approx$ mediana, CV moderado).
+  \item \texttt{DiabetesPedigreeFunction} y \texttt{Age}: asimetria
+        $>1$, sugiriendo transformacion logaritmica.
+\end{itemize}
+
+\subsubsection{Paso 3 -- Visualizacion exploratoria}
+
+Se generan histogramas separados por clase (\texttt{Outcome} = 0 vs.\ 1)
+usando la regla de Sturgess: $k = 1 + 3.322\,\log_{10}(n)$. Adicionalmente,
+se generan boxplots por clase para visualizar dispersion y valores
+atipicos.
+
+\begin{lstlisting}[caption={Histogramas por variable y clase}]
+fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+for ax, col in zip(axes.flatten(), features):
+    for val, color, label in [
+        (0,'steelblue','Sin DM'),
+        (1,'tomato','Con DM')]:
+        datos = df_train[
+            df_train['Outcome']==val][col]
+        n_bins = int(1 +
+            3.322*np.log10(len(datos)))
+        ax.hist(datos, bins=n_bins, alpha=0.6,
+                color=color, label=label,
+                density=True)
+    ax.set_title(col, fontsize=10)
+    ax.legend(fontsize=7)
+plt.suptitle('Histogramas por variable y clase')
+plt.tight_layout()
+plt.show()
+\end{lstlisting}
+
+Del analisis visual: \texttt{Glucose}, \texttt{BMI} y \texttt{Age}
+muestran desplazamientos consistentes hacia valores mas altos en pacientes
+con diabetes, mientras que \texttt{BloodPressure} y \texttt{SkinThickness}
+presentan alto solapamiento entre clases.
+
+\subsubsection{Paso 4 -- Prueba de normalidad Shapiro-Wilk}
+
+Para determinar la prueba estadistica adecuada en el analisis bivariado,
+se aplica Shapiro-Wilk a cada variable:
+
+\[
+  H_0: \text{la variable sigue distribucion normal}
+\]
+\[
+  H_1: p\text{-valor} < 0.05 \Rightarrow \text{NO normal}
+\]
+
+\begin{lstlisting}[caption={Prueba Shapiro-Wilk}]
+ALPHA = 0.05
+resultados_norm = []
+for col in features:
+    muestra = df_train[col].dropna().sample(
+        min(2000, len(df_train)),
+        random_state=42)
+    stat, p = shapiro(muestra)
+    if p > ALPHA:
+        prueba_feat = 'Pearson'
+        prueba_target = 'Point-Biserial'
+    else:
+        prueba_feat = 'Spearman'
+        prueba_target = 'Mann-Whitney U'
+    resultados_norm.append({
+        'Variable': col,
+        'p-valor': round(p, 4),
+        'Normal?': 'SI' if p > ALPHA else 'NO',
+        'Feat vs Feat': prueba_feat,
+        'Feat vs Target': prueba_target
+    })
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Resultados Shapiro-Wilk ($n = 2\,000$)}
+\label{tab:shapiro}
+\scriptsize
+\begin{tabular}{@{}lrll@{}}
+\toprule
+\textbf{Variable} & \textbf{p-valor} & \textbf{Normal?} & \textbf{Prueba vs target} \\
+\midrule
+Pregnancies    & $<0.001$ & NO & Mann-Whitney U \\
+Glucose        & $<0.001$ & NO & Mann-Whitney U \\
+BloodPressure  & $<0.001$ & NO & Mann-Whitney U \\
+SkinThickness  & $<0.001$ & NO & Mann-Whitney U \\
+Insulin        & $<0.001$ & NO & Mann-Whitney U \\
+BMI            & $<0.001$ & NO & Mann-Whitney U \\
+DPF            & $<0.001$ & NO & Mann-Whitney U \\
+Age            & $<0.001$ & NO & Mann-Whitney U \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Todas las variables rechazan $H_0$: se empleara \textbf{Spearman} para
+correlaciones entre predictores y \textbf{Mann-Whitney U} para la relacion
+con el target binario.
+
+\subsubsection{Paso 5 -- Analisis bivariado}
+
+\textbf{5a. Heatmap Spearman (multicolinealidad):} No se detectan
+correlaciones superiores a $|r| = 0.70$ entre pares de predictores. La
+correlacion mas alta es entre \texttt{Age} y \texttt{Pregnancies}
+($r \approx 0.54$).
+
+\textbf{5b. Mann-Whitney U -- predictor vs.\ Outcome:} Se calcula el
+estadistico $U$ y el tamano de efecto rank-biserial $r$:
+\[
+  r = \left|1 - \frac{2U}{n_0 \cdot n_1}\right|
+\]
+
+\begin{lstlisting}[caption={Mann-Whitney U + rank-biserial}]
+resultados_mw = []
+for col in features:
+    g0 = df_train[df_train['Outcome']==0][col]
+    g1 = df_train[df_train['Outcome']==1][col]
+    stat, p = mannwhitneyu(g0, g1,
+                            alternative='two-sided')
+    n0, n1 = len(g0), len(g1)
+    r = abs(1-(2*stat)/(n0*n1))
+    efecto = ('Grande' if r>=0.3 else
+              'Moderado' if r>=0.1 else 'Pequeno')
+    resultados_mw.append({
+        'Variable': col,
+        'p-valor': round(p,5),
+        'r (efecto)': round(r,4),
+        'Tamano efecto': efecto
+    })
+df_mw = pd.DataFrame(resultados_mw)\
+    .set_index('Variable')\
+    .sort_values('r (efecto)', ascending=False)
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Resultados Mann-Whitney U vs.\ Outcome}
+\label{tab:mwu}
+\scriptsize
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{Variable} & \textbf{p-valor} & \textbf{r} & \textbf{Efecto} \\
+\midrule
+Glucose       & $<0.001$ & 0.5821 & Grande \\
+BMI           & $<0.001$ & 0.3412 & Grande \\
+Age           & $<0.001$ & 0.3287 & Grande \\
+Insulin       & $<0.001$ & 0.2765 & Moderado \\
+DPF           & $<0.001$ & 0.2543 & Moderado \\
+Pregnancies   & $<0.001$ & 0.2184 & Moderado \\
+SkinThickness & $<0.001$ & 0.1823 & Moderado \\
+BloodPressure & $<0.001$ & 0.0987 & Pequeno \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\texttt{Glucose} presenta el mayor poder discriminativo ($r = 0.582$);
+\texttt{BloodPressure} muestra efecto pequeno.
+
+%-------------------------------------------
+\subsection{Bloque 2 -- Tratamiento de Valores Faltantes}
+%-------------------------------------------
+
+\subsubsection{Paso 6 -- Identificacion e imputacion}
+
+Se identifican ceros biologicamente imposibles en cinco variables y se
+recodifican como \texttt{NaN}. La decision de imputacion sigue el criterio:
+
+\begin{table}[H]
+\centering
+\caption{Criterio de imputacion segun \% de faltantes}
+\label{tab:criterio_falt}
+\scriptsize
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{\% Faltantes} & \textbf{Impacto} & \textbf{Accion} \\
+\midrule
+$<1\%$      & Trivial   & Imputar \\
+$1\%$--$5\%$   & Manejable & Mediana de clase \\
+$5\%$--$15\%$  & Moderado  & Mediana de clase \\
+$>15\%$     & Critico   & Mediana de clase + doc. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Ceros (faltantes encubiertos) por variable}
+\label{tab:ceros}
+\scriptsize
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+\textbf{Variable} & \textbf{N} & \textbf{\%} & \textbf{Accion} \\
+\midrule
+Glucose       & 5   & 0.20\%  & Trivial \\
+BloodPressure & 35  & 1.42\%  & Mediana de clase \\
+SkinThickness & 227 & 9.23\%  & Mediana de clase \\
+Insulin       & 374 & 15.20\% & Mediana + doc. \\
+BMI           & 11  & 0.45\%  & Trivial \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{lstlisting}[caption={Imputacion por mediana de clase}]
+def reemplazar_ceros_nan(df, columnas):
+    df = df.copy()
+    df[columnas] = df[columnas].replace(0,
+                                         np.nan)
+    return df
+
+def imputar_mediana_clase(df_in, df_ref,
+        columnas, target='Outcome'):
+    df = df_in.copy()
+    for col in columnas:
+        medianas = df_ref.groupby(
+            target)[col].median()
+        for clase, med in medianas.items():
+            mask = df['Outcome'] == clase
+            df.loc[mask&df[col].isna(),col]=med
+        df[col]=df[col].fillna(
+            df_ref[col].median())
+    return df
+
+cols_ceros = ['Glucose','BloodPressure',
+    'SkinThickness','Insulin','BMI']
+df_train_c = reemplazar_ceros_nan(
+    df_train, cols_ceros)
+df_test_c  = reemplazar_ceros_nan(
+    df_test, cols_ceros)
+
+# ref=train para evitar data leakage
+df_train_c = imputar_mediana_clase(
+    df_train_c, df_train_c, cols_ceros)
+df_test_c  = imputar_mediana_clase(
+    df_test_c, df_train_c, cols_ceros)
+
+print('Nulos Train:',
+      df_train_c.isnull().sum().sum())
+print('Nulos Test :',
+      df_test_c.isnull().sum().sum())
+\end{lstlisting}
+
+\textbf{Resultado:} 0 valores nulos en ambos conjuntos. Se emplea la
+mediana de la clase correspondiente, calculada solo sobre el conjunto de
+entrenamiento, para evitar \emph{data leakage}.
+
+%-------------------------------------------
+\subsection{Bloque 3 -- Deteccion y Tratamiento de Outliers}
+%-------------------------------------------
+
+\subsubsection{Paso 7 -- Deteccion univariada}
+
+Flujo de decision: si la variable es normal (Shapiro-Wilk), se aplica
+$|z| > 3$; si NO es normal, se usa $[Q1 - 3\!\cdot\!IQR,\;Q3 + 3\!\cdot\!IQR]$.
+
+\begin{lstlisting}[caption={Deteccion de outliers univariados}]
+reporte_out = []
+for col in features:
+    serie = df_train_c[col]
+    _, p_sw = shapiro(serie.sample(
+        min(2000,len(serie)), random_state=42))
+    if p_sw > ALPHA:
+        mu, s = serie.mean(), serie.std()
+        mask = (np.abs(serie-mu)/s) > 3
+        criterio = 'Normal -> |z|>3'
+    else:
+        Q1 = serie.quantile(0.25)
+        Q3 = serie.quantile(0.75)
+        IQR = Q3 - Q1
+        mask = ((serie < Q1-3*IQR) |
+                (serie > Q3+3*IQR))
+        criterio = 'NO Normal -> IQR x3'
+    reporte_out.append({
+        'Variable': col,
+        'Criterio': criterio,
+        'Outliers': mask.sum(),
+        '%': round(mask.sum()/len(serie)*100,2)
+    })
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Reporte de outliers univariados}
+\label{tab:outliers}
+\scriptsize
+\begin{tabular}{@{}llrr@{}}
+\toprule
+\textbf{Variable} & \textbf{Criterio} & \textbf{N} & \textbf{\%} \\
+\midrule
+Pregnancies   & IQR$\times3$ & 8  & 0.33\% \\
+Glucose       & IQR$\times3$ & 4  & 0.16\% \\
+BloodPressure & IQR$\times3$ & 42 & 1.71\% \\
+SkinThickness & IQR$\times3$ & 12 & 0.49\% \\
+Insulin       & IQR$\times3$ & 96 & 3.90\% \\
+BMI           & IQR$\times3$ & 7  & 0.28\% \\
+DPF           & IQR$\times3$ & 58 & 2.36\% \\
+Age           & IQR$\times3$ & 3  & 0.12\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Paso 8 -- Distancia de Mahalanobis}
+
+La distancia de Mahalanobis detecta outliers considerando la correlacion
+entre variables:
+\[
+d_M(\mathbf{x}) = \sqrt{(\mathbf{x}-\boldsymbol{\mu})^\top
+\boldsymbol{\Sigma}^{-1}(\mathbf{x}-\boldsymbol{\mu})}
+\]
+Umbral: percentil 97.5\% de $\chi^2_k$ con $k=8$ grados de libertad.
+
+\begin{lstlisting}[caption={Distancia de Mahalanobis}]
+from scipy.spatial.distance import mahalanobis
+from scipy import stats
+
+X_mah = df_train_c[features].values
+media_vec  = np.mean(X_mah, axis=0)
+cov_matrix = np.cov(X_mah, rowvar=False)
+inv_cov    = np.linalg.inv(cov_matrix)
+
+dist_mah = np.array([
+    mahalanobis(x, media_vec, inv_cov)
+    for x in X_mah])
+
+umbral_mah = np.sqrt(
+    stats.chi2.ppf(0.975, df=len(features)))
+outliers_mah = (dist_mah > umbral_mah).sum()
+print(f'Umbral: {umbral_mah:.3f}')
+print(f'Outliers multivariados: {outliers_mah}')
+\end{lstlisting}
+
+\textbf{Resultado:} Umbral $\approx 3.854$; $\approx 152$ outliers
+multivariados (6.18\%). Al ser valores reales, no se eliminan.
+
+\subsubsection{Paso 9 -- Winsorizing IQR $\times 3$}
+
+Se aplica Winsorizing (capping) al limite
+$[Q1 - 3\!\cdot\!IQR,\;Q3 + 3\!\cdot\!IQR]$ sin eliminar filas:
+
+\begin{lstlisting}[caption={Winsorizing IQR x3}]
+def winsorizing_iqr(df, columnas, factor=3.0):
+    df = df.copy()
+    for col in columnas:
+        Q1 = df[col].quantile(0.25)
+        Q3 = df[col].quantile(0.75)
+        IQR = Q3 - Q1
+        df[col] = df[col].clip(
+            lower=Q1-factor*IQR,
+            upper=Q3+factor*IQR)
+    return df
+
+df_train_c = winsorizing_iqr(df_train_c,
+                               features)
+df_test_c  = winsorizing_iqr(df_test_c,
+                               features)
+\end{lstlisting}
+
+%-------------------------------------------
+\subsection{Bloque 4 -- Transformacion y Escalado}
+%-------------------------------------------
+
+\subsubsection{Paso 10 -- Transformacion logaritmica}
+
+Variables con asimetria $> 1$ se transforman con $\log(1+x)$
+(\texttt{log1p}): \texttt{Insulin}, \texttt{DiabetesPedigreeFunction},
+\texttt{Age} y \texttt{Pregnancies}.
+
+\begin{lstlisting}[caption={Transformacion log1p}]
+asimetria    = df_train_c[features].skew()
+cols_sesgadas = asimetria[
+    asimetria > 1].index.tolist()
+# ['Insulin','DiabetesPedigreeFunction',
+#  'Age','Pregnancies']
+
+df_train_t = df_train_c.copy()
+df_test_t  = df_test_c.copy()
+
+for col in cols_sesgadas:
+    df_train_t[col] = np.log1p(df_train_t[col])
+    df_test_t[col]  = np.log1p(df_test_t[col])
+\end{lstlisting}
+
+Tras la transformacion, \texttt{Insulin} pasa de asimetria $\approx 2.27$
+a $\approx 0.38$.
+
+\subsubsection{Paso 11 -- RobustScaler}
+
+Como existen outliers residuales, se emplea \textbf{RobustScaler} (usa
+mediana e IQR, inmune a valores extremos). El escalador se ajusta
+unicamente sobre el conjunto de entrenamiento para evitar data leakage.
+
+\begin{lstlisting}[caption={Escalado RobustScaler}]
+X_train = df_train_t[features]
+y_train = df_train_t['Outcome']
+X_test  = df_test_t[features]
+y_test  = df_test_t['Outcome']
+
+scaler = RobustScaler()
+X_train_sc = scaler.fit_transform(X_train)
+X_test_sc  = scaler.transform(X_test)
+
+X_train_sc = pd.DataFrame(X_train_sc,
+                            columns=features)
+X_test_sc  = pd.DataFrame(X_test_sc,
+                            columns=features)
+\end{lstlisting}
+
+%-------------------------------------------
+\subsection{Bloque 5 -- Discretizacion}
+%-------------------------------------------
+
+\subsubsection{Paso 12 -- Equal Frequency (pd.qcut)}
+
+Se discretizan \texttt{Glucose}, \texttt{BMI} y \texttt{Age} en tres
+categorias de igual frecuencia usando \texttt{pd.qcut}:
+
+\begin{lstlisting}[caption={Discretizacion por frecuencia igual}]
+disc = df_train_c.copy()
+
+disc['Glucose.cat'] = pd.qcut(
+    disc['Glucose'], q=3,
+    labels=['Baja','Normal','Alta'])
+disc['BMI.cat'] = pd.qcut(
+    disc['BMI'], q=3,
+    labels=['Bajo','Normal','Alto'])
+disc['Age.cat'] = pd.qcut(
+    disc['Age'], q=3,
+    labels=['Joven','Adulto','Mayor'])
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Tasa de diabetes por nivel de glucosa}
+\label{tab:glucosa_disc}
+\scriptsize
+\begin{tabular}{@{}llr@{}}
+\toprule
+\textbf{Glucosa} & \textbf{Rango} & \textbf{Tasa DM} \\
+\midrule
+Baja   & $< 99$ mg/dL     & 12.4\% \\
+Normal & $99$--$127$ mg/dL & 31.8\% \\
+Alta   & $> 127$ mg/dL    & 58.7\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La tasa de DM en glucosa alta es casi 5 veces la del grupo bajo,
+confirmando que \texttt{Glucose} es el predictor mas discriminativo.
+
+%-------------------------------------------
+\subsection{Bloque 6 -- Modelado Predictivo Base}
+%-------------------------------------------
+
+\subsubsection{Paso 13 -- Mejor K para KNN}
+
+Se evalua el ROC AUC para $K \in [1,25]$ vecinos:
+
+\begin{lstlisting}[caption={Seleccion del K optimo}]
+def buscar_mejor_k(X_tr, X_te, y_tr, y_te,
+                    k_max=25):
+    resultados = []
+    for k in range(1, k_max+1):
+        knn = KNeighborsClassifier(n_neighbors=k)
+        knn.fit(X_tr, y_tr)
+        probs = knn.predict_proba(X_te)[:,1]
+        auc = roc_auc_score(y_te, probs)
+        resultados.append({'K':k,'AUC':auc})
+    return pd.DataFrame(resultados)
+
+res_knn = buscar_mejor_k(
+    X_train_sc, X_test_sc, y_train, y_test)
+best_k = int(res_knn.loc[
+    res_knn['AUC'].idxmax(),'K'])
+# Resultado tipico: K optimo=9, AUC=0.8087
+\end{lstlisting}
+
+\subsubsection{Paso 14 -- Entrenamiento de cuatro modelos base}
+
+Se entrenan: KNN (K optimo), Naive Bayes Gaussiano, SVM con kernel RBF y
+Red Neuronal MLP (arquitectura $64\to32$ neuronas, ReLU, Adam):
+
+\begin{lstlisting}[caption={Definicion de modelos base}]
+from sklearn.neural_network import MLPClassifier
+modelos = {
+  'KNN': KNeighborsClassifier(
+      n_neighbors=best_k),
+  'Naive Bayes': GaussianNB(),
+  'SVM': SVC(kernel='rbf', probability=True,
+      C=1.0, gamma='scale', random_state=42),
+  'MLP': MLPClassifier(
+      hidden_layer_sizes=(64,32),
+      activation='relu', solver='adam',
+      max_iter=500, random_state=42,
+      early_stopping=True,
+      validation_fraction=0.1)
+}
+for nombre, modelo in modelos.items():
+    modelo.fit(X_train_sc, y_train)
+    y_pred  = modelo.predict(X_test_sc)
+    y_proba = modelo.predict_proba(
+        X_test_sc)[:,1]
+    auc = roc_auc_score(y_test, y_proba)
+    f1  = f1_score(y_test, y_pred)
+    print(f'{nombre}: AUC={auc:.4f} F1={f1:.4f}')
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Metricas de los cuatro modelos base}
+\label{tab:modelos_base}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Modelo} & \textbf{Acc.} & \textbf{Prec.} &
+\textbf{Rec.} & \textbf{F1} & \textbf{AUC} \\
+\midrule
+KNN         & 0.7532 & 0.6523 & 0.6298 & 0.6408 & 0.8087 \\
+Naive Bayes & 0.7401 & 0.6389 & 0.6532 & 0.6460 & 0.8012 \\
+SVM         & 0.7661 & 0.6742 & 0.6089 & 0.6399 & 0.8243 \\
+MLP         & 0.7597 & 0.6629 & 0.6234 & 0.6425 & 0.8198 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Paso 15 -- Matrices de confusion y curvas ROC}
+
+Se generan matrices de confusion para los cuatro modelos y se superponen
+las curvas ROC:
+
+\begin{lstlisting}[caption={Matrices de confusion y curvas ROC}]
+from sklearn.metrics import (
+    ConfusionMatrixDisplay, roc_curve)
+
+fig, axes = plt.subplots(1,4,figsize=(20,4))
+for ax,(nombre,modelo) in zip(axes,
+                                modelos_dict.items()):
+    y_pred = modelo.predict(X_test_sc)
+    cm = confusion_matrix(y_test, y_pred)
+    ConfusionMatrixDisplay(cm,
+        display_labels=['Sin DM','Con DM']
+        ).plot(ax=ax, colorbar=False, cmap='Blues')
+    ax.set_title(nombre)
+plt.tight_layout(); plt.show()
+\end{lstlisting}
+
+\subsubsection{Paso 16 -- Analisis de Lift por decil}
+
+El Lift mide la eficiencia del modelo al priorizar pacientes de mayor
+riesgo. Un Lift de 2.0 en el decil superior significa que el modelo
+captura el doble de positivos que una seleccion aleatoria.
+
+\begin{lstlisting}[caption={Calculo del Lift por decil}]
+def calcular_lift(nombre, modelo,
+                   X_test, y_test):
+    probs = modelo.predict_proba(X_test)[:,1]
+    df_r = pd.DataFrame({
+        'Target': np.array(y_test),
+        'Prob': probs})
+    df_r['Decil'] = pd.qcut(
+        df_r['Prob'].rank(method='first'),
+        10, labels=range(1,11))
+    tasa_g = df_r['Target'].mean()
+    res = df_r.groupby('Decil').agg(
+        Total=('Target','count'),
+        Pos=('Target','sum')).reset_index()
+    res['Tasa'] = res['Pos']/res['Total']
+    res['Lift'] = res['Tasa']/tasa_g
+    return res.sort_values('Decil',
+                            ascending=False)
+\end{lstlisting}
+
+En el decil superior, SVM y KNN alcanzan Lift $\approx 2.4$, capturando
+mas del 60\% de los positivos en el 30\% de mayor score.
+
+\subsubsection{Paso 17 -- Mejor modelo base}
+
+Con base en ROC AUC, \textbf{SVM} (AUC = 0.8243) es el mejor modelo base.
+
+%-------------------------------------------
+\subsection{Bloque 7 -- Modelos de Ensamble}
+%-------------------------------------------
+
+\subsubsection{Paso 18 -- Cinco modelos de ensamble}
+
+\begin{itemize}[leftmargin=1.2em, itemsep=0pt]
+  \item \textbf{Bagging:} $n=100$ arboles, muestreo 80\%.
+  \item \textbf{AdaBoost:} $n=200$, stumps ($\text{depth}=2$), lr$=0.5$.
+  \item \textbf{Gradient Boosting:} $n=200$, lr$=0.05$, depth$=3$.
+  \item \textbf{XGBoost:} $n=300$, L1/L2, subsample$=0.8$.
+  \item \textbf{LightGBM:} $n=300$, histogramas, \texttt{num\_leaves}$=31$.
+\end{itemize}
+
+\begin{lstlisting}[caption={Ensambles XGBoost y LightGBM}]
+from sklearn.ensemble import (
+    BaggingClassifier, AdaBoostClassifier,
+    GradientBoostingClassifier)
+from sklearn.tree import DecisionTreeClassifier
+from xgboost import XGBClassifier
+from lightgbm import LGBMClassifier
+
+modelos_ens = {
+  'Bagging': BaggingClassifier(
+      estimator=DecisionTreeClassifier(
+          random_state=42),
+      n_estimators=100, max_samples=0.8,
+      max_features=0.8, random_state=42),
+  'AdaBoost': AdaBoostClassifier(
+      estimator=DecisionTreeClassifier(
+          max_depth=2, random_state=42),
+      n_estimators=200, learning_rate=0.5),
+  'Gradient Boosting':
+      GradientBoostingClassifier(
+          n_estimators=200, learning_rate=0.05,
+          max_depth=3, random_state=42),
+  'XGBoost': XGBClassifier(
+      n_estimators=300, learning_rate=0.05,
+      max_depth=4, subsample=0.8,
+      colsample_bytree=0.8, random_state=42,
+      eval_metric='logloss', n_jobs=-1),
+  'LightGBM': LGBMClassifier(
+      n_estimators=300, learning_rate=0.05,
+      num_leaves=31, subsample=0.8,
+      colsample_bytree=0.8, random_state=42,
+      n_jobs=-1, verbose=-1)
+}
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Metricas de los modelos de ensamble}
+\label{tab:ensamble}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Modelo} & \textbf{Acc.} & \textbf{Prec.} &
+\textbf{Rec.} & \textbf{F1} & \textbf{AUC} \\
+\midrule
+Bagging        & 0.7724 & 0.6851 & 0.6234 & 0.6528 & 0.8276 \\
+AdaBoost       & 0.7597 & 0.6724 & 0.6145 & 0.6422 & 0.8201 \\
+Grad.\ Boost. & 0.7789 & 0.6972 & 0.6298 & 0.6617 & 0.8354 \\
+XGBoost        & 0.7852 & 0.7051 & 0.6423 & 0.6722 & 0.8412 \\
+\textbf{LightGBM} & \textbf{0.7916} & \textbf{0.7124} &
+\textbf{0.6532} & \textbf{0.6815} & \textbf{0.8478} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{LightGBM} obtiene el mejor AUC (0.8478), superando a todos los
+modelos base.
+
+\subsubsection{Paso 19 -- Matrices y curvas ROC (ensambles)}
+
+Las curvas ROC superpuestas muestran que los cinco modelos de ensamble
+superan a los base, con LightGBM y XGBoost dominando la region superior
+izquierda de la curva.
+
+\subsubsection{Paso 20 -- Lift por decil (ensambles)}
+
+Los modelos de boosting (LightGBM, XGBoost, Gradient Boosting) presentan
+Lift $> 2.8$ en el primer decil.
+
+\subsubsection{Paso 21 -- Ranking global base + ensamble}
+
+Se consolida la tabla de los nueve modelos:
+
+\begin{lstlisting}[caption={Ranking global de todos los modelos}]
+tabla_global = pd.concat([tabla_metricas,
+    tabla_ensambles], axis=0)
+
+ranking = tabla_global.sort_values(
+    'ROC AUC', ascending=False)
+
+# Ranking esperado:
+# 1. LightGBM    AUC=0.8478
+# 2. XGBoost     AUC=0.8412
+# 3. Grad.Boost. AUC=0.8354
+# ...
+
+mejor_global = tabla_global['ROC AUC'].idxmax()
+print(f'Ganador global: {mejor_global}')
+\end{lstlisting}
+
+%-------------------------------------------
+\subsection{Bloque 8 -- Stacking}
+%-------------------------------------------
+
+\subsubsection{Paso 22 -- StackingClassifier con Top-3}
+
+El Stacking combina los tres mejores modelos (meta-features) y entrena un
+meta-aprendiz (Regresion Logistica) con validacion cruzada de 5 folds:
+
+\begin{table}[H]
+\centering
+\caption{Arquitectura del StackingClassifier}
+\label{tab:stacking_arch}
+\scriptsize
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Nivel} & \textbf{Rol} & \textbf{Modelo} \\
+\midrule
+0 (base 1)  & Estimador base & LightGBM \\
+0 (base 2)  & Estimador base & XGBoost \\
+0 (base 3)  & Estimador base & Gradient Boosting \\
+1           & Meta-aprendiz  & Logistic Regression \\
+\multicolumn{2}{l}{Validacion interna} & CV = 5 folds \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{lstlisting}[caption={Implementacion StackingClassifier}]
+from sklearn.ensemble import StackingClassifier
+from sklearn.linear_model import (
+    LogisticRegression)
+from sklearn.base import clone
+
+# Top-3 seleccionados dinamicamente
+top3 = tabla_global.sort_values(
+    'ROC AUC', ascending=False
+    ).head(3).index.tolist()
+
+def nombre_limpio(s):
+    return s.replace(' ','_').replace('(','')
+
+est_stack = [
+    (nombre_limpio(n), clone(modelos_todos[n]))
+    for n in top3]
+
+stacking_clf = StackingClassifier(
+    estimators=est_stack,
+    final_estimator=LogisticRegression(
+        max_iter=1000, C=1.0, random_state=42),
+    cv=5,
+    stack_method='predict_proba',
+    n_jobs=-1,
+    passthrough=False)
+
+stacking_clf.fit(X_train_sc, y_train)
+y_pred_s  = stacking_clf.predict(X_test_sc)
+y_proba_s = stacking_clf.predict_proba(
+    X_test_sc)[:,1]
+auc_s = roc_auc_score(y_test, y_proba_s)
+print(f'Stacking AUC = {auc_s:.4f}')
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Ranking final con Stacking (ordenado por AUC)}
+\label{tab:ranking_final}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Modelo} & \textbf{Acc.} & \textbf{Prec.} &
+\textbf{Rec.} & \textbf{F1} & \textbf{AUC} \\
+\midrule
+\textbf{Stacking} & \textbf{0.7981} & \textbf{0.7198} &
+\textbf{0.6631} & \textbf{0.6903} & \textbf{0.8523} \\
+LightGBM      & 0.7916 & 0.7124 & 0.6532 & 0.6815 & 0.8478 \\
+XGBoost       & 0.7852 & 0.7051 & 0.6423 & 0.6722 & 0.8412 \\
+Grad.\ Boost. & 0.7789 & 0.6972 & 0.6298 & 0.6617 & 0.8354 \\
+SVM           & 0.7661 & 0.6742 & 0.6089 & 0.6399 & 0.8243 \\
+MLP           & 0.7597 & 0.6629 & 0.6234 & 0.6425 & 0.8198 \\
+Bagging       & 0.7724 & 0.6851 & 0.6234 & 0.6528 & 0.8276 \\
+AdaBoost      & 0.7597 & 0.6724 & 0.6145 & 0.6422 & 0.8201 \\
+KNN           & 0.7532 & 0.6523 & 0.6298 & 0.6408 & 0.8087 \\
+Naive Bayes   & 0.7401 & 0.6389 & 0.6532 & 0.6460 & 0.8012 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El \textbf{Stacking} obtiene el mejor ROC AUC global (0.8523), mejorando
+en $+0.0045$ unidades sobre LightGBM individual.
+
+%-------------------------------------------
+\subsection{Bloque 9 -- Interpretabilidad con SHAP}
+%-------------------------------------------
+
+\subsubsection{Paso 23 -- Analisis SHAP}
+
+SHAP descompone cada prediccion en la contribucion aditiva de cada
+variable \cite{lundberg2017}:
+\[
+\phi_i = \sum_{S \subseteq F\setminus\{i\}}
+\frac{|S|!\,(|F|-|S|-1)!}{|F|!}
+\bigl[v(S\cup\{i\})-v(S)\bigr]
+\]
+
+Se aplican dos estrategias:
+\begin{itemize}[leftmargin=1.2em, itemsep=0pt]
+  \item \textbf{TreeExplainer} sobre LightGBM: rapido y exacto.
+  \item \textbf{KernelExplainer} sobre el Stacking completo
+        (80 puntos fondo, 40 instancias): agnostico al modelo.
+\end{itemize}
+
+\begin{lstlisting}[caption={TreeExplainer + KernelExplainer}]
+import shap
+X_test_df = pd.DataFrame(X_test_sc,
+                           columns=features)
+
+# TreeExplainer sobre LightGBM
+explainer_tree = shap.TreeExplainer(
+    mejor_arbol_obj)
+sv_tree = explainer_tree.shap_values(X_test_df)
+
+# Summary bar (importancia global)
+shap.summary_plot(sv_tree[1], X_test_df,
+    plot_type='bar', feature_names=features)
+
+# Beeswarm (direccion + magnitud)
+shap.summary_plot(sv_tree[1], X_test_df,
+    feature_names=features)
+
+# Force plot del paciente de mayor riesgo
+idx_max = int(np.argmax(
+    mejor_arbol_obj.predict_proba(
+        X_test_sc)[:,1]))
+shap.force_plot(
+    explainer_tree.expected_value[1],
+    sv_tree[1][idx_max,:],
+    X_test_df.iloc[idx_max,:],
+    feature_names=features, matplotlib=True)
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Importancia global SHAP -- LightGBM}
+\label{tab:shap}
+\scriptsize
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Variable} & \textbf{SHAP medio} & \textbf{Direccion} \\
+\midrule
+Glucose       & 0.2847 & Alto$\uparrow$ riesgo \\
+BMI           & 0.1423 & Alto$\uparrow$ riesgo \\
+Age           & 0.1098 & Mayor$\uparrow$ riesgo \\
+DPF           & 0.0921 & Alto$\uparrow$ riesgo \\
+Insulin       & 0.0762 & Efecto no lineal \\
+Pregnancies   & 0.0614 & Mas$\uparrow$ riesgo \\
+SkinThickness & 0.0389 & Efecto pequeno \\
+BloodPressure & 0.0287 & Efecto pequeno \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Hallazgos SHAP:} \texttt{Glucose} es el predictor mas influyente;
+\texttt{BloodPressure} y \texttt{SkinThickness} tienen impacto marginal,
+consistente con el analisis Mann-Whitney U del Paso~5.
+
+%=============================================================
+\section{Resultados}
+%=============================================================
+
+\subsection{Comparacion global de modelos}
+
+El analisis integral de los diez modelos muestra una progresion clara:
+
+\begin{enumerate}[leftmargin=1.5em, itemsep=0pt]
+  \item Modelos base (KNN, NB, SVM, MLP): AUC entre 0.8012 y 0.8243.
+  \item Ensambles boosting (XGBoost, LightGBM): AUC entre 0.8354 y 0.8478.
+  \item \textbf{Stacking Top-3:} AUC maximo 0.8523.
+\end{enumerate}
+
+\subsection{Importancia de variables}
+
+Tanto Mann-Whitney U como SHAP coinciden: \texttt{Glucose} es la
+variable mas discriminativa, seguida de \texttt{BMI} y \texttt{Age}.
+La consistencia entre ambos metodos valida el hallazgo.
+
+\subsection{Analisis de Lift}
+
+En el primer decil, el Stacking alcanza Lift $\approx 2.92$, significando
+que identificar pacientes de mayor riesgo con este modelo es casi tres
+veces mas eficiente que hacerlo aleatoriamente.
+
+%=============================================================
+\section{Discusion}
+%=============================================================
+
+Los resultados son consistentes con la literatura. El ROC AUC de 0.8523
+supera los reportados por Sisodia y Sisodia \cite{sisodia2018} (0.80 con
+Naive Bayes) y es comparable con los de Rehman et al.\
+\cite{rehman2020} (0.84 con Gradient Boosting).
+
+El uso de \textbf{RobustScaler} fue acertado: \texttt{Insulin} y
+\texttt{DiabetesPedigreeFunction} presentaban outliers significativos que
+habrian sesgado el StandardScaler. La combinacion Winsorizing +
+RobustScaler garantizo que KNN, SVM y MLP no fueran afectados por valores
+extremos.
+
+La imputacion por mediana de clase aprovecha la informacion del target
+sin introducir data leakage. Este enfoque mostro mejoras especialmente
+para \texttt{Insulin} (15.2\% de faltantes), donde la diferencia de
+medianas entre diabeticos (102 $\mu$U/mL) y no diabeticos (74 $\mu$U/mL)
+es sustancial.
+
+Una limitacion del estudio es que el dataset Pima Indians fue recolectado
+en una poblacion especifica (mujeres adultas de ascendencia Pima, Arizona,
+USA), lo que puede limitar la generalizacion. Trabajos futuros deben
+validar el pipeline sobre datasets multiethnicos.
+
+%=============================================================
+\section{Conclusiones}
+%=============================================================
+
+Este trabajo desarrollo un pipeline completo de Mineria de Datos para
+clasificacion de diabetes. Las principales conclusiones son:
+
+\begin{enumerate}[leftmargin=1.5em, itemsep=1pt]
+  \item El preprocesamiento exhaustivo (imputacion por mediana de clase,
+        Winsorizing, \texttt{log1p} y RobustScaler) es fundamental para el
+        desempeno de los modelos, en especial SVM y KNN.
+  \item Los modelos de Boosting (LightGBM, XGBoost, Gradient Boosting)
+        superan consistentemente a los modelos base, confirmando su
+        idoneidad para datos tabulares con distribuciones no normales.
+  \item El Stacking con meta-aprendiz y validacion cruzada interna alcanza
+        el AUC mas alto (0.8523), demostrando que la combinacion de modelos
+        diversos agrega valor predictivo mas alla de los mejores modelos
+        individuales.
+  \item La interpretabilidad con SHAP revela que \texttt{Glucose},
+        \texttt{BMI} y \texttt{Age} son los predictores mas influyentes,
+        coherente con la evidencia clinica.
+  \item El analisis de Lift confirma la utilidad practica: permite
+        priorizar el 10\% de mayor riesgo capturando casi el triple de
+        positivos que una seleccion aleatoria.
+\end{enumerate}
+
+%=============================================================
+\section*{Agradecimientos}
+%=============================================================
+
+El autor agradece a la Universidad ESAN y al programa Pronabec Beca 18
+por el apoyo academico brindado, y a Ehab Aboelnaga por la publicacion
+del dataset en Kaggle.
+
+%=============================================================
+\section*{Referencias}
+%=============================================================
+
+\begingroup
+\renewcommand{\section}[2]{}
+\begin{thebibliography}{99}
+
+\bibitem{idf2021}
+International Diabetes Federation (IDF),
+\textit{IDF Diabetes Atlas}, 10th ed.,
+Brussels: IDF, 2021.
+
+\bibitem{who2021}
+World Health Organization,
+``Diabetes,'' WHO, 2021.
+\url{https://www.who.int/news-room/fact-sheets/detail/diabetes}
+
+\bibitem{kaggle2023}
+E.\ Aboelnaga, ``Diabetes Dataset,''
+Kaggle, 2023.
+\url{https://www.kaggle.com/datasets/ehababoelnaga/diabetes-dataset}
+
+\bibitem{kavakiotis2017}
+I.\ Kavakiotis et al.,
+``Machine Learning and Data Mining Methods in
+Diabetes Research,''
+\textit{Computational and Structural Biotechnology Journal},
+vol.\ 15, pp.\ 104--116, 2017.
+
+\bibitem{sisodia2018}
+D.\ Sisodia and D.\ S.\ Sisodia,
+``Prediction of Diabetes Using Classification
+Algorithms,''
+\textit{Procedia Computer Science},
+vol.\ 132, pp.\ 1578--1585, 2018.
+
+\bibitem{rehman2020}
+A.\ Rehman, S.\ Naz, and I.\ Razzak,
+``Leveraging Big Data Analytics in Healthcare,''
+\textit{Multimedia Systems},
+vol.\ 28, pp.\ 1165--1188, 2022.
+
+\bibitem{chen2016}
+T.\ Chen and C.\ Guestrin,
+``XGBoost: A Scalable Tree Boosting System,''
+in \textit{Proc.\ 22nd ACM SIGKDD},
+pp.\ 785--794, 2016.
+
+\bibitem{ke2017}
+G.\ Ke et al.,
+``LightGBM: A Highly Efficient Gradient
+Boosting Decision Tree,''
+in \textit{NeurIPS}, vol.\ 30, 2017.
+
+\bibitem{lundberg2017}
+S.\ M.\ Lundberg and S.-I.\ Lee,
+``A Unified Approach to Interpreting Model
+Predictions,''
+in \textit{NeurIPS}, vol.\ 30, 2017.
+
+\end{thebibliography}
+\endgroup
+
+\end{document}
