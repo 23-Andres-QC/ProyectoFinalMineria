@@ -429,8 +429,8 @@ análisis exploratorio y no como una regla definitiva de exclusión.
 Los outliers no se eliminaron, porque representan valores clínicamente
 posibles. Se aplicó winsorizing IQR$\times3$ con límites calculados solo en
 train y luego aplicados a train y test. Posteriormente, las variables con
-asimetría positiva fuerte (\code{DiabetesPedigreeFunction} y \code{Age}) se
-transformaron con \code{log1p}. Finalmente, se usó \code{RobustScaler}, que
+asimetría positiva fuerte (\code{Insulin}, \code{DiabetesPedigreeFunction} y
+\code{Age}) se transformaron con \code{log1p}. Finalmente, se usó \code{RobustScaler}, que
 escala con mediana e IQR y es más estable ante valores extremos.
 
 \subsection{Discretización por Cuantiles}
