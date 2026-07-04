@@ -51,7 +51,7 @@ Lima, Perú \\
 \maketitle
 
 \begin{abstract}
-El presente informe desarrolla un pipeline completo de minería de datos para la clasificación binaria de diabetes a partir del conjunto Pima Indians Diabetes. El trabajo parte de una investigación contextual sobre la diabetes en el Perú: la prevalencia autorreportada en personas de 15 años a más aumentó de 3.9\% en 2019 a 5.5\% en 2023, el MINSA estima alrededor de 1.3 millones de personas afectadas y la diabetes fue reportada como la séptima causa de muerte en el país. Sobre ese problema se desarrolla un análisis exploratorio del dataset, tratamiento de valores faltantes, detección y control de outliers, transformación de variables, escalado robusto, discretización por cuantiles, entrenamiento de modelos base, modelos de ensamble, stacking, evaluación por métricas predictivas e interpretabilidad con SHAP. El conjunto de entrenamiento contiene 2\,460 registros y el conjunto de prueba 302 registros, después de retirar 6 coincidencias exactas con el train. El mejor modelo final fue Bagging de árboles, con ROC AUC = 0.8937, F1 = 0.7222 y accuracy = 0.8344 en test. El modelo Stacking Top-3 alcanzó un ROC AUC de 0.8889, muy cercano al ganador, pero sin superarlo. La interpretabilidad SHAP confirma que Glucose es la variable más influyente. Como aporte aplicado, se propone usar el score del modelo como mecanismo de priorización: dado que su cálculo requiere las variables de entrada del modelo ---incluida Glucose---, su uso coherente es priorizar la confirmación diagnóstica y el seguimiento después de una medición inicial, y no reemplazar ni decidir de forma autónoma la solicitud de pruebas clínicas.
+El presente informe desarrolla un pipeline completo de minería de datos para la clasificación binaria de diabetes a partir del conjunto Pima Indians Diabetes, motivado por la tendencia creciente de la enfermedad en el Perú. El flujo abarca análisis exploratorio, tratamiento de valores faltantes, control de outliers, transformación y escalado robusto, discretización, entrenamiento de cinco modelos base y cinco de ensamble, un modelo de stacking, evaluación por métricas predictivas e interpretabilidad con SHAP. Tras retirar 6 coincidencias exactas con el train, el conjunto de entrenamiento contiene 2\,460 registros y el de prueba 302. El mejor modelo global fue Bagging de árboles (ROC AUC = 0.8937, F1 = 0.7222, accuracy = 0.8344 en test), seguido de cerca por el Stacking Top-3 (ROC AUC = 0.8889), que no llegó a superarlo. La interpretabilidad SHAP confirma que \code{Glucose} es la variable más influyente, seguida de \code{BMI}, \code{Age} y \code{DiabetesPedigreeFunction}, con una dirección coherente con la evidencia clínica: valores altos empujan la predicción hacia la clase positiva. Como aporte aplicado, el score del modelo se propone como mecanismo de priorización ---ordenar pacientes por riesgo para acelerar su confirmación diagnóstica y seguimiento--- y no como sustituto de la decisión clínica.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -126,7 +126,7 @@ La literatura sobre predicción de diabetes con machine learning suele trabajar 
 
 En datos tabulares, los métodos de ensamble suelen ser competitivos porque combinan múltiples modelos débiles o moderados para reducir varianza o sesgo. Bagging promedia árboles entrenados sobre muestras bootstrap, mientras que boosting entrena modelos secuenciales que corrigen errores anteriores. Implementaciones como XGBoost y LightGBM han destacado por su eficiencia y regularización en problemas de clasificación \cite{chen2016,ke2017}.
 
-No obstante, el rendimiento predictivo no es suficiente en salud. Un modelo de apoyo clínico debe ser interpretable, trazable y compatible con decisiónes operativas. Por ello, SHAP se usa como técnica de explicación para estimar la contribución de cada variable a las predicciones del modelo \cite{lundberg2017}. En este proyecto, SHAP permite verificar si los predictores más influyentes coinciden con la evidencia clínica y con los hallazgos estadísticos del análisis exploratorio.
+No obstante, el rendimiento predictivo no es suficiente en salud. Un modelo de apoyo clínico debe ser interpretable, trazable y compatible con decisiones operativas. Por ello, SHAP se usa como técnica de explicación para estimar la contribución de cada variable a las predicciones del modelo \cite{lundberg2017}. En este proyecto, SHAP permite verificar si los predictores más influyentes coinciden con la evidencia clínica y con los hallazgos estadísticos del análisis exploratorio.
 
 \section{Datos y Variables}
 
@@ -167,7 +167,7 @@ La variable objetivo presenta desbalance moderado: en el conjunto de entrenamien
 
 \subsection{Análisis Exploratorio}
 
-El análisis univariado calculó media, mediana, moda, cuartiles, IQR, coeficiente de variación, asimetría y curtosis. Para no distorsionar los estadísticos, los ceros biológicamente imposibles en \code{Glucose}, \code{BloodPressure}, \code{SkinThickness}, \code{Insulin} y \code{BMI} se trataron como faltantes antes del análisis descriptivo.
+El análisis univariado busca caracterizar la forma de cada variable antes de modelar. Se calcularon media, mediana, moda, cuartiles, IQR, coeficiente de variación, asimetría y curtosis. Para no distorsionar los estadísticos, los ceros biológicamente imposibles en \code{Glucose}, \code{BloodPressure}, \code{SkinThickness}, \code{Insulin} y \code{BMI} se trataron como faltantes antes del análisis descriptivo. Dos hallazgos guían las decisiones posteriores: \code{Insulin} es la variable más dispersa y con mayor asimetría positiva (media muy por encima de la mediana, lo que anticipa outliers y justifica una transformación logarítmica), mientras que \code{Glucose} es la más simétrica y equilibrada (media $\approx$ mediana), lo que la hace un predictor estable.
 
 \begin{figure}[H]
   \centering
@@ -187,7 +187,7 @@ Los histogramas y boxplots muestran que \code{Glucose}, \code{BMI} y \code{Age} 
 
 \subsection{Normalidad y Relación con el Target}
 
-Se aplicó Shapiro-Wilk para evaluar normalidad. Como las variables no siguieron distribución normal, la correlación entre predictores se evaluó con Spearman y la relación de cada predictor con \code{Outcome} mediante Mann-Whitney U con tamaño de efecto rank-biserial. Conviene señalar que, en muestras grandes, Shapiro-Wilk es muy sensible y tiende a rechazar la normalidad ante desviaciones pequeñas; por ello, su resultado se usó como apoyo para elegir pruebas no paramétricas y no como criterio absoluto.
+El objetivo de este paso es elegir la prueba estadística correcta según la naturaleza de los datos. Se aplicó Shapiro-Wilk para evaluar normalidad: como ninguna variable resultó normal, la correlación entre predictores se evaluó con Spearman (no Pearson) y la relación de cada predictor con \code{Outcome} ---una variable binaria--- mediante Mann-Whitney U (no Pearson ni Spearman), acompañada del tamaño de efecto rank-biserial. Conviene señalar que, en muestras grandes, Shapiro-Wilk es muy sensible y tiende a rechazar la normalidad ante desviaciones pequeñas; además, con $n$ elevado casi cualquier diferencia resulta significativa. Por eso el criterio de decisión no es el $p$-valor sino el \textbf{tamaño de efecto}, que indica qué variables realmente discriminan entre clases.
 
 \begin{figure}[H]
   \centering
@@ -203,7 +203,9 @@ Se aplicó Shapiro-Wilk para evaluar normalidad. Como las variables no siguieron
   \label{fig:mann_whitney}
 \end{figure}
 
-El análisis bivariado confirma que \code{Glucose} es el predictor con mayor capacidad discriminativa frente al target. \code{BMI} y \code{Age} también aportan información relevante, mientras que \code{BloodPressure} muestra un efecto menor.
+El mapa de correlación (Fig.~\ref{fig:spearman}) sirve para detectar multicolinealidad, es decir, predictores que aportan información redundante. Ninguna pareja supera el umbral de $|r|>0.7$, por lo que no hay multicolinealidad severa que obligue a descartar variables. Las tres correlaciones moderadas más altas son clínicamente esperables: \code{Glucose}--\code{Insulin} ($r=0.68$), porque la insulina responde a la glucemia; \code{SkinThickness}--\code{BMI} ($r=0.68$), ambas ligadas a adiposidad; y \code{Pregnancies}--\code{Age} ($r=0.67$), pues el número de embarazos crece con la edad.
+
+El tamaño de efecto de Mann-Whitney (Fig.~\ref{fig:mann_whitney}) ordena la capacidad de cada variable para separar pacientes con y sin diabetes. \code{Glucose} encabeza el ranking con $r=0.64$ (efecto grande), muy por encima del resto. Le siguen \code{Insulin} ($r\approx0.53$), \code{Age} y \code{BMI} ($r\approx0.42$) y \code{SkinThickness} ($r\approx0.39$), todas por encima del umbral de efecto grande ($r=0.3$). En el extremo inferior, \code{DiabetesPedigreeFunction} ($r\approx0.26$) y \code{BloodPressure} ($r\approx0.24$) muestran efecto solo moderado. Conviene retener que \code{Insulin} aparece como el segundo predictor más discriminante en este análisis marginal; más adelante se contrasta este resultado con su aporte real dentro del modelo.
 
 \subsection{Tratamiento de Faltantes}
 
@@ -249,7 +251,7 @@ Los outliers no se eliminaron, porque representan valores clínicamente posibles
 
 \subsection{Discretización por Cuantiles}
 
-Para fines exploratorios se discretizaron variables relevantes con \code{pd.qcut}, que genera grupos de igual frecuencia (terciles). Esta discretización por cuantiles permite comparar la tasa de diabetes entre grupos relativos de glucosa, pero no corresponde a los puntos de corte clínicos oficiales (por ejemplo, glucemia en ayunas $\geq 126$ mg/dL). El análisis de tasa de diabetes por nivel de glucosa mostró un aumento claro del riesgo en la categoría alta.
+La discretización sirve para visualizar de forma directa cómo cambia el riesgo al pasar de niveles bajos a altos de una variable. Se discretizó \code{Glucose} con \code{pd.qcut}, que genera terciles de igual frecuencia (Baja, Normal, Alta). Esta partición por cuantiles compara riesgo \emph{relativo} entre grupos y no corresponde a los puntos de corte clínicos oficiales (por ejemplo, glucemia en ayunas $\geq 126$ mg/dL), por lo que su lectura es exploratoria. El resultado es contundente y monótono: la tasa de diabetes pasa de \textbf{7.2\%} en el tercil bajo a \textbf{41.8\%} en el intermedio y \textbf{66.3\%} en el alto (Fig.~\ref{fig:tasa_glucosa}). Es decir, un paciente del tercil alto de glucosa tiene alrededor de nueve veces más prevalencia que uno del tercil bajo, lo que anticipa el peso que \code{Glucose} tendrá en los modelos.
 
 \begin{figure}[H]
   \centering
@@ -262,7 +264,7 @@ Para fines exploratorios se discretizaron variables relevantes con \code{pd.qcut
 
 La selección de hiperparámetros se realizó con \code{GridSearchCV} y validación cruzada estratificada de 10 folds sobre el train, usando \code{roc\_auc} como métrica de optimización. El test se reservó exclusivamente para la evaluación final.
 
-Primero se evaluó KNN para $K=1,\ldots,25$ y luego se afinó mediante \code{GridSearchCV}. El mejor resultado en validación cruzada fue \code{n\_neighbors}$=9$, distancia Manhattan y ponderación por distancia, con ROC AUC CV de 0.9358. En el test independiente, KNN alcanzó ROC AUC de 0.8537. La validación cruzada se calculo con el preprocesamiento encapsulado dentro de un \code{Pipeline}, de modo que la imputación, winsorización, transformación logarítmica y escalado se reajustaron dentro de cada fold.
+Primero se evaluó KNN para $K=1,\ldots,25$ y luego se afinó mediante \code{GridSearchCV}. El mejor resultado en validación cruzada fue \code{n\_neighbors}$=9$, distancia Manhattan y ponderación por distancia, con ROC AUC CV de 0.9358. En el test independiente, KNN alcanzó ROC AUC de 0.8537. La brecha entre ambos valores ilustra por qué la métrica de CV, aunque honesta al recalcular el preprocesamiento en cada fold, no reemplaza la evaluación en un test reservado.
 
 \begin{figure}[H]
   \centering
@@ -272,6 +274,8 @@ Primero se evaluó KNN para $K=1,\ldots,25$ y luego se afinó mediante \code{Gri
 \end{figure}
 
 Luego se entrenaron cinco modelos base: KNN, Naive Bayes, SVM RBF, Regresión Logística y MLP. Después se entrenaron cinco ensambles: Bagging de árboles, AdaBoost, Gradient Boosting, XGBoost y LightGBM; estos dos últimos son implementaciones modernas de gradient boosting para datos tabulares \cite{chen2016,ke2017}. Finalmente se construyó un \code{StackingClassifier} con los tres modelos de mayor ROC AUC en validación cruzada (LightGBM, Bagging de árboles y XGBoost) como estimadores base y Regresión Logística como meta-aprendiz, generando las meta-características con validación cruzada interna de 10 folds.
+
+Este esquema tiene un costo computacional no trivial: cada uno de los once modelos se ajusta múltiples veces dentro de \code{GridSearchCV} con validación cruzada de 10 folds, a lo que se suman el stacking y, más adelante, el explainer SHAP. El costo crece con el tamaño del dataset y con la amplitud de la rejilla de hiperparámetros. Existe, por tanto, un balance a considerar: un mayor volumen de datos tiende a producir estimaciones de desempeño más estables y evaluaciones más confiables, pero incrementa los tiempos de entrenamiento y de búsqueda. En este trabajo el volumen (2\,460 registros de entrenamiento) permitió ejecutar toda la búsqueda en tiempos manejables; escalar a volúmenes mayores exigiría acotar la rejilla, usar búsqueda aleatoria o paralelizar el cómputo.
 
 \section{Resultados}
 
@@ -333,7 +337,7 @@ LightGBM & 0.8278 & 0.7204 & 0.5962 & 0.8651 & 0.7302 \\
 \end{tabular}
 \end{table}
 
-Bagging de árboles fue el mejor ensamble y también el mejor modelo global, con el mejor valor en todas las métricas reportadas: accuracy, F1, kappa, ROC AUC y Gini. LightGBM fue el ensamble más cercano en F1 y accuracy, mientras que XGBoost fue el segúndo mejor ensamble en ROC AUC.
+Bagging de árboles fue el mejor ensamble y también el mejor modelo global, con el mejor valor en todas las métricas reportadas: accuracy, F1, kappa, ROC AUC y Gini. LightGBM fue el ensamble más cercano en F1 y accuracy, mientras que XGBoost fue el segundo mejor ensamble en ROC AUC.
 
 \begin{figure}[H]
   \centering
@@ -413,7 +417,7 @@ Desde una perspectiva operativa, este tipo de análisis es especialmente útil e
 
 \section{Interpretabilidad}
 
-La interpretabilidad se trabajó con SHAP, un enfoque basado en valores de Shapley para explicar contribuciones de variables a nivel global y local \cite{lundberg2017}. Dado que el modelo ganador Bagging de árboles de \code{scikit-learn} no es compatible directamente con \code{TreeExplainer}, se usó \code{KernelExplainer} para explicar la probabilidad de la clase positiva del ganador, con 80 observaciones de entrenamiento como background y 40 instancias de test explicadas (\code{nsamples}$=200$). Además, se incluyó un análisis complementario con \code{TreeExplainer} sobre XGBoost, por ser el mejor modelo de árbol compatible con ese método.
+La interpretabilidad responde a una pregunta que la métrica de desempeño no contesta: \emph{por qué} el modelo predice lo que predice. Se trabajó con SHAP, un enfoque basado en valores de Shapley que descompone cada predicción en la contribución individual de cada variable \cite{lundberg2017}. Dado que el modelo ganador Bagging de árboles de \code{scikit-learn} no es compatible directamente con \code{TreeExplainer}, se usó \code{KernelExplainer} para explicar la probabilidad de la clase positiva del ganador, con 80 observaciones de entrenamiento como background y 40 instancias de test explicadas (\code{nsamples}$=200$); esta configuración acotada responde al alto costo del método basado en muestreo. Además, se incluyó un análisis complementario con \code{TreeExplainer} sobre XGBoost, por ser el mejor modelo de árbol compatible con ese método, lo que permite verificar si las conclusiones se sostienen entre modelos distintos.
 
 \begin{figure}[H]
   \centering
@@ -436,19 +440,23 @@ La interpretabilidad se trabajó con SHAP, un enfoque basado en valores de Shapl
   \label{fig:shap_bar_xgb}
 \end{figure}
 
-El resultado central es estable: \code{Glucose} es la variable más influyente del modelo ganador. Este hallazgo coincide con el análisis exploratorio, el test Mann-Whitney U y el análisis de tasa de diabetes por categorías de glucosa. En segúndo plano aparecen variables como \code{BMI}, \code{Age} y \code{DiabetesPedigreeFunction}, que también tienen sentido clínico.
+\textbf{Importancia global (Fig.~\ref{fig:shap_bar_bagging}).} La barra ordena las variables por el promedio del valor absoluto de SHAP, es decir, cuánto mueven la predicción en promedio. \code{Glucose} domina con un impacto medio cercano a $0.14$, casi el doble que \code{BMI} (segunda, $\approx0.076$). Le siguen \code{Age} ($\approx0.054$) y \code{DiabetesPedigreeFunction} ($\approx0.043$), y por debajo \code{Pregnancies}, \code{Insulin}, \code{SkinThickness} y \code{BloodPressure}. Este orden es prácticamente idéntico en el modelo complementario XGBoost (Fig.~\ref{fig:shap_bar_xgb}), lo que indica que la jerarquía de variables no es un artefacto de un modelo concreto, sino una señal robusta de los datos.
+
+\textbf{Dirección del efecto (Fig.~\ref{fig:shap_beeswarm_bagging}).} El gráfico beeswarm añade el sentido de cada contribución: cada punto es un paciente, su posición horizontal es el efecto sobre la probabilidad predicha y el color codifica el valor de la variable (rojo alto, azul bajo). La lectura de las tres variables principales es clínicamente coherente. En \code{Glucose}, los valores altos (rojos) se ubican a la derecha ---suman probabilidad de diabetes--- y los bajos (azules) a la izquierda; la relación es fuerte y prácticamente monótona, con contribuciones que llegan a $+0.35$. En \code{BMI} ocurre lo mismo: mayor índice de masa corporal empuja hacia la clase positiva, consistente con el papel de la obesidad como factor de riesgo. En \code{DiabetesPedigreeFunction}, los valores altos ---mayor carga de antecedentes familiares--- también aportan en dirección positiva. \code{Age} sigue la misma tendencia, aunque con más dispersión alrededor de cero.
+
+\textbf{Contraste con el análisis bivariado.} Un resultado interesante es el de \code{Insulin}: fue el segundo predictor por tamaño de efecto de Mann-Whitney, pero aquí queda entre los de menor aporte. La explicación es que su información está en buena parte contenida en \code{Glucose} ---ambas correlacionan $r=0.68$--- y que su 20\% de faltantes se imputó con la mediana, lo que reduce su varianza útil; el modelo obtiene esa señal principalmente a través de \code{Glucose}, por lo que la contribución \emph{marginal} de \code{Insulin} se diluye. Esto ilustra la diferencia entre la relevancia \emph{individual} de una variable (Mann-Whitney) y su aporte \emph{condicional} dentro de un modelo multivariado (SHAP), y muestra por qué ambos análisis se complementan.
 
 \section{Discusión}
 
-Los resultados muestran que un preprocesamiento cuidadoso es tan importante como el algoritmo elegido. El uso de medianas calculadas solo en train evita fuga de información; el winsorizing controla valores extremos sin eliminar pacientes clínicamente posibles; y \code{RobustScaler} reduce la sensibilidad de KNN, SVM y MLP ante outliers.
+Los resultados muestran que un preprocesamiento cuidadoso ---imputación y límites de winsorizing calculados solo en train, más escalado robusto--- fue tan determinante como la elección del algoritmo, sobre todo para los modelos sensibles a escala y outliers (KNN, SVM, MLP).
 
-El hecho de que Bagging supere ligeramente a XGBoost, LightGBM y Stacking indica que, para este dataset, reducir varianza mediante múltiples árboles bootstrap fue más efectivo que modelos boosting más complejos. Sin embargo, la diferencia con Stacking es mínima, por lo que ambos enfoques podrían considerarse competitivos. La selección de Bagging se justifica por mayor ROC AUC, mayor F1 y menor complejidad operativa frente al stacking.
+El hecho de que Bagging supere ligeramente a XGBoost, LightGBM y Stacking indica que, para este dataset, reducir varianza mediante múltiples árboles bootstrap fue más efectivo que los modelos boosting más complejos. La diferencia con el Stacking es mínima (0.0048 en ROC AUC), por lo que ambos son competitivos; se prefirió Bagging por su mayor ROC AUC y F1 y su menor complejidad operativa. Es esperable, además, que las diferencias tan estrechas entre los modelos del top se estabilicen ---o incluso cambien de orden--- con un volumen de datos mayor, lo que refuerza la idea de que la elección final debe leerse junto con sus limitaciones y no como una ventaja definitiva.
 
 En términos clínicos, el modelo no reemplaza las pruebas diagnósticas. Su valor está en la priorización: ordenar pacientes por riesgo y apoyar circuitos de confirmación con glucemia, HbA1c o prueba de tolerancia oral a la glucosa. Esto dialoga directamente con la investigación inicial sobre Perú, donde una de las brechas principales no es la falta de criterios diagnósticos, sino la heterogeneidad en tiempos, disponibilidad de pruebas y seguimiento.
 
 \subsection{Impacto Esperado en el Circuito de Atención}
 
-La investigación inicial muestra que el diagnóstico puede resolverse rápido cuando hay laboratorio disponible, pero el sistema no lo logra de manera homogénea. Las demoras aparecen cuando el paciente no llega en ayunas, cuando debe regresar para una segúnda prueba, cuando no hay HbA1c disponible o cuando se pierde continuidad entre resultado anormal y confirmación médica. El modelo puede contribuir en tres puntos:
+La investigación inicial muestra que el diagnóstico puede resolverse rápido cuando hay laboratorio disponible, pero el sistema no lo logra de manera homogénea. Las demoras aparecen cuando el paciente no llega en ayunas, cuando debe regresar para una segunda prueba, cuando no hay HbA1c disponible o cuando se pierde continuidad entre resultado anormal y confirmación médica. El modelo puede contribuir en tres puntos:
 
 \begin{enumerate}[leftmargin=1.3em,itemsep=1pt]
   \item \textbf{Triaje tras la medición inicial:} una vez registradas las variables de entrada del paciente ---incluida una medición de glucosa---, usar el score para clasificar a los pacientes en riesgo alto, medio y bajo.
@@ -467,7 +475,7 @@ La investigación inicial muestra que el diagnóstico puede resolverse rápido c
 \midrule
 Paciente no llega en ayunas & Si el score es alto, priorizar HbA1c el mismo día cuando esté disponible. \\
 Capacidad limitada de consulta & Ordenar pacientes por riesgo para usar cupos rápidos en quienes tienen mayor probabilidad de diabetes. \\
-Demora entre resultado y confirmación & Activar circuito corto para scores altos: segúnda prueba o cita de confirmación prioritaria. \\
+Demora entre resultado y confirmación & Activar circuito corto para scores altos: segunda prueba o cita de confirmación prioritaria. \\
 Subregistro y seguimiento débil & Guardar score y predicción como variable de vigilancia para control posterior. \\
 Sobrecarga hospitalaria & Derivar casos de menor riesgo a seguimiento programado en primer nivel y acelerar casos de alto riesgo. \\
 \bottomrule
@@ -487,20 +495,17 @@ El estudio presenta varias limitaciones que conviene declarar de forma explícit
   \item \textbf{Coincidencias train-test.} Se detectaron 6 registros idénticos entre train y test y se eliminaron del conjunto de prueba antes de la evaluación final. El test final quedó con 302 observaciones.
   \item \textbf{Discretización por cuantiles.} La discretización de glucosa se realizó con cuantiles (terciles), útil para comparar riesgo relativo, y no con los umbrales clínicos oficiales; por ello, su lectura es exploratoria.
   \item \textbf{Dependencia de la variable de entrada.} El score requiere \code{Glucose} como insumo, de modo que el modelo apoya la priorización de la confirmación y el seguimiento posteriores a una medición inicial, no la decisión de solicitar la primera prueba.
+  \item \textbf{Volumen de datos y costo computacional.} El conjunto de entrenamiento (2\,460 registros) es modesto y las diferencias entre los mejores modelos son estrechas. Un mayor volumen daría estimaciones de desempeño más estables y evaluaciones más confiables, pero a costa de mayores tiempos de entrenamiento y de búsqueda de hiperparámetros; escalar el enfoque exigiría acotar la rejilla o paralelizar el cómputo.
 \end{enumerate}
 
 \section{Conclusiones}
 
 \begin{itemize}[leftmargin=1.3em,itemsep=2pt]
-  \item El pipeline desarrollado es consistente y reduce la fuga de información: las coincidencias exactas entre train y test se eliminaron del test, y la imputación, winsorización, transformación logarítmica y escala se encapsularon dentro de \code{Pipeline} para la validación cruzada.
-  \item La variable más importante para distinguir pacientes con y sin diabetes fue \code{Glucose}, confirmada por EDA, Mann-Whitney U, tasa por categorías y SHAP.
-  \item El mejor modelo base fue Regresión Logística, con ROC AUC de 0.8822.
-  \item El mejor modelo global fue Bagging de árboles, con ROC AUC de 0.8937, F1 de 0.7222 y accuracy de 0.8344.
-  \item El Stacking Top-3 fue altamente competitivo, con ROC AUC de 0.8889, pero no superó al Bagging individual.
-  \item La integración del modelo con un circuito clínico real debería enfocarse en priorización de riesgo, no en diagnóstico autónomo.
-  \item En el contexto peruano, un modelo de este tipo puede aportar valor si se combina con disponibilidad de pruebas, confirmación diagnóstica rápida y seguimiento en atención primaria.
-  \item A partir de la investigación inicial, el principal aporte operativo del modelo sería reducir el tiempo entre primera sospecha y confirmación: una vez disponibles las variables de entrada, los pacientes con score alto deberían priorizarse para confirmación (HbA1c, glucemia en ayunas o PTOG, según disponibilidad local) y seguimiento.
-  \item El modelo también puede ayudar a reducir congestión: si un consultorio atiende alrededor de 16--20 pacientes por turno, ordenar por riesgo permite usar los cupos clínicos y de laboratorio con mayor eficiencia.
+  \item \textbf{Mejor modelo.} El ganador global fue Bagging de árboles (ROC AUC 0.8937, F1 0.7222, accuracy 0.8344), por delante del Stacking Top-3 (0.8889) y de la Regresión Logística, mejor modelo base (0.8822). El buen desempeño de esta última muestra que una frontera lineal regularizada sigue siendo competitiva en datos clínicos tabulares.
+  \item \textbf{Variable determinante.} \code{Glucose} es el predictor dominante, con evidencia convergente de cuatro análisis independientes ---EDA, Mann-Whitney U, tasa de diabetes por tercil y SHAP---, y con una dirección coherente: a mayor glucosa, mayor riesgo estimado.
+  \item \textbf{Rigor del flujo.} El pipeline controla la fuga de información: se retiraron las coincidencias train--test y todo el preprocesamiento se recalcula dentro de cada fold de la validación cruzada.
+  \item \textbf{Uso aplicado.} El valor del modelo está en priorizar riesgo ---ordenar pacientes para acelerar confirmación (HbA1c, glucemia o PTOG) y seguimiento en atención primaria--- y no en diagnosticar de forma autónoma.
+  \item \textbf{Alcance.} Los resultados no están validados en población peruana y las diferencias entre los mejores modelos son estrechas; su consolidación requiere mayor volumen de datos y validación local.
 \end{itemize}
 
 \section{Trabajo Futuro}
