@@ -1,169 +1,72 @@
-%=============================================================
-%  INFORME FINAL
-%  Modelos predictivos para clasificacion de diabetes
-%  Basado en ProyectoFinal.ipynb e Investigacion.md
-%=============================================================
-
-\documentclass[12pt,a4paper,twocolumn]{article}
-
+\documentclass[conference]{IEEEtran}
+\usepackage{float}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{placeins}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\graphicspath{{Image/}}
+\usepackage{hyperref}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage{booktabs}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[spanish,es-noshorthands]{babel}
-\usepackage{times}
-\usepackage[top=1.9cm,bottom=2.54cm,left=1.7cm,right=1.7cm]{geometry}
-\usepackage{graphicx}
-\usepackage{booktabs}
-\usepackage{array}
 \usepackage{tabularx}
 \usepackage{multirow}
-\usepackage{caption}
-\usepackage{subcaption}
-\usepackage{float}
 \usepackage{enumitem}
-\usepackage{xcolor}
-\usepackage{amsmath,amssymb}
-\usepackage{url}
-\usepackage[hidelinks]{hyperref}
-\usepackage{titlesec}
-\usepackage{fancyhdr}
-\usepackage{setspace}
 
-\graphicspath{{Image/}}
-\setlength{\columnsep}{0.55cm}
-\setlength{\parindent}{0pt}
-\setlength{\parskip}{3pt}
-\setstretch{1.04}
-\sloppy
-
-\titleformat{\section}[block]
-  {\normalsize\bfseries\scshape\centering}
-  {\Roman{section}.}{0.5em}{}
-\titleformat{\subsection}[block]
-  {\normalsize\itshape}
-  {\Alph{subsection}.}{0.5em}{}
-\titleformat{\subsubsection}[runin]
-  {\normalsize\itshape}{}{0em}{}[:]
-\titlespacing{\section}{0pt}{8pt plus 2pt minus 2pt}{4pt plus 1pt}
-\titlespacing{\subsection}{0pt}{6pt plus 1pt minus 1pt}{3pt}
-
-\pagestyle{fancy}
-\fancyhf{}
-\fancyfoot[C]{\thepage}
-\renewcommand{\headrulewidth}{0pt}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
 \newcommand{\metric}[1]{\textbf{#1}}
 \newcommand{\code}[1]{\texttt{#1}}
 
 \begin{document}
 
-\twocolumn[{%
-  \begin{center}
-    {\LARGE\bfseries Modelos Predictivos de Machine Learning para la\\[3pt]
-    Clasificación de Diabetes en el Dataset Pima Indians}\\[8pt]
-    {\normalsize
-      \textbf{Integrantes}\\[2pt]
-      ANGEL AGUILAR CONTRERAS \quad
-      ANDRES QUILICHE CHAVEZ \quad
-      RONAL AYBAR WALDO\\[3pt]
-      Proyecto Final -- Minería de Datos\\
-      Universidad ESAN, Facultad de Ingeniería de Tecnologías de la Información\\
-      Lima, Perú
-    }
-  \end{center}
-  \vspace{5pt}\hrule\vspace{6pt}
-  {\small
-  \noindent\textbf{Resumen}---El presente informe desarrolla un pipeline
-  completo de minería de datos para la clasificación binaria de diabetes a
-  partir del conjunto Pima Indians Diabetes. El trabajo parte de una
-  investigación contextual sobre la diabetes en el Perú: la prevalencia
-  autorreportada en personas de 15 años a más aumentó de 3.9\% en 2019 a
-  5.5\% en 2023, el MINSA estima alrededor de 1.3 millones de personas
-  afectadas y la diabetes fue reportada como la séptima causa de muerte en el
-  país. Sobre ese problema se desarrolla un análisis exploratorio del dataset,
-  tratamiento de valores faltantes, detección y control de outliers,
-  transformación de variables, escalado robusto, discretización por cuantiles,
-  entrenamiento de modelos base, modelos de ensamble, stacking, evaluación por
-  métricas predictivas e interpretabilidad con SHAP.
-  El conjunto de entrenamiento contiene 2\,460 registros y el conjunto de
-  prueba 302 registros, después de retirar 6 coincidencias exactas con el train. El mejor modelo final fue
-  \textbf{Bagging de árboles}, con \metric{ROC AUC = 0.8937},
-  \metric{F1 = 0.7222} y \metric{accuracy = 0.8344} en test. El modelo
-  Stacking Top-3 alcanzó un ROC AUC de 0.8889, muy cercano al ganador, pero
-  sin superarlo. La interpretabilidad SHAP confirma que \code{Glucose} es la
-  variable más influyente. Como aporte aplicado, se propone usar el score del
-  modelo como mecanismo de priorización: dado que su cálculo requiere las
-  variables de entrada del modelo ---incluida \code{Glucose}---, su uso
-  coherente es priorizar la confirmación diagnóstica y el seguimiento después
-  de una medición inicial, y no reemplazar ni decidir de forma autónoma la
-  solicitud de pruebas clínicas.
+\title{Modelos Predictivos de Machine Learning para la Clasificación de Diabetes en el Dataset Pima Indians}
 
-  \vspace{4pt}
-  \noindent\textbf{Palabras clave}---diabetes; minería de datos; machine
-  learning; clasificación; Bagging; XGBoost; SHAP; Pima Indians; ROC AUC.
-  }
-  \vspace{6pt}\hrule\vspace{12pt}
-}]
+\author{
+\IEEEauthorblockN{
+Angel Aguilar Contreras,
+Andres Quiliche Chavez,
+Ronal Aybar Waldo
+}
+\IEEEauthorblockA{
+\textit{Facultad de Ingeniería de Tecnologías de la Información} \\
+\textit{Universidad ESAN} \\
+Lima, Perú
+}
+}
 
-%=============================================================
+\maketitle
+
+\begin{abstract}
+El presente informe desarrolla un pipeline completo de minería de datos para la clasificación binaria de diabetes a partir del conjunto Pima Indians Diabetes. El trabajo parte de una investigación contextual sobre la diabetes en el Perú: la prevalencia autorreportada en personas de 15 años a más aumentó de 3.9\% en 2019 a 5.5\% en 2023, el MINSA estima alrededor de 1.3 millones de personas afectadas y la diabetes fue reportada como la séptima causa de muerte en el país. Sobre ese problema se desarrolla un análisis exploratorio del dataset, tratamiento de valores faltantes, detección y control de outliers, transformación de variables, escalado robusto, discretización por cuantiles, entrenamiento de modelos base, modelos de ensamble, stacking, evaluación por métricas predictivas e interpretabilidad con SHAP. El conjunto de entrenamiento contiene 2\,460 registros y el conjunto de prueba 302 registros, después de retirar 6 coincidencias exactas con el train. El mejor modelo final fue Bagging de árboles, con ROC AUC = 0.8937, F1 = 0.7222 y accuracy = 0.8344 en test. El modelo Stacking Top-3 alcanzó un ROC AUC de 0.8889, muy cercano al ganador, pero sin superarlo. La interpretabilidad SHAP confirma que Glucose es la variable más influyente. Como aporte aplicado, se propone usar el score del modelo como mecanismo de priorización: dado que su cálculo requiere las variables de entrada del modelo ---incluida Glucose---, su uso coherente es priorizar la confirmación diagnóstica y el seguimiento después de una medición inicial, y no reemplazar ni decidir de forma autónoma la solicitud de pruebas clínicas.
+\end{abstract}
+
+\begin{IEEEkeywords}
+diabetes, minería de datos, machine learning, clasificación, Bagging, XGBoost, SHAP, Pima Indians, ROC AUC.
+\end{IEEEkeywords}
+
 \section{Introducción}
-%=============================================================
 
-La diabetes mellitus es una enfermedad crónica de alta relevancia sanitaria
-por su asociación con complicaciones cardiovasculares, renales, neurológicas
-y visuales, y constituye una de las principales enfermedades no transmisibles
-a nivel global \cite{idf2021,who2021}. En el Perú, la diabetes muestra una trayectoria ascendente:
-según la investigación inicial del proyecto, la prevalencia autorreportada
-en personas de 15 años a más pasó de 3.9\% en 2019 a 4.5\% en 2020, 4.9\%
-en 2021 y 5.5\% en 2023. Este cambio equivale a un aumento de 1.6 puntos
-porcentuales y a un crecimiento relativo aproximado de 41\% frente a 2019.
-El último dato nacional explícito revisado corresponde a ENDES 2023, resumido
-por MINSA como cerca de 1.3 millones de peruanos mayores de 15 años viviendo
-con diabetes \cite{minsa2024,inei2023}.
+La diabetes mellitus es una enfermedad crónica de alta relevancia sanitaria por su asociación con complicaciones cardiovasculares, renales, neurológicas y visuales, y constituye una de las principales enfermedades no transmisibles a nivel global \cite{idf2021,who2021}. En el Perú, la diabetes muestra una trayectoria ascendente: según la investigación inicial del proyecto, la prevalencia autorreportada en personas de 15 años a más pasó de 3.9\% en 2019 a 4.5\% en 2020, 4.9\% en 2021 y 5.5\% en 2023. Este cambio equivale a un aumento de 1.6 puntos porcentuales y a un crecimiento relativo aproximado de 41\% frente a 2019. El último dato nacional explícito revisado corresponde a ENDES 2023, resumido por MINSA como cerca de 1.3 millones de peruanos mayores de 15 años viviendo con diabetes \cite{minsa2024,inei2023}.
 
-La carga no es únicamente epidemiológica. El CDC Perú reportó 54\,986 casos
-registrados entre enero de 2023 y junio de 2024 y advirtió subregistro; para
-2025 la red de notificación incluía 1\,600 establecimientos, de los cuales
-1\,440 correspondían al primer nivel de atención \cite{cdc2024,cdc2025}.
-Esto evidencia un sistema en expansión, pero todavía con brechas de registro,
-confirmación diagnóstica y seguimiento.
+La carga no es únicamente epidemiológica. El CDC Perú reportó 54\,986 casos registrados entre enero de 2023 y junio de 2024 y advirtió subregistro; para 2025 la red de notificación incluía 1\,600 establecimientos, de los cuales 1\,440 correspondían al primer nivel de atención \cite{cdc2024,cdc2025}. Esto evidencia un sistema en expansión, pero todavía con brechas de registro, confirmación diagnóstica y seguimiento.
 
-En este contexto, los modelos de machine learning pueden apoyar la
-priorización de pacientes con mayor probabilidad de diabetes, especialmente
-cuando se usan como herramientas de apoyo a la decisión clínica y no como
-sustitutos del diagnóstico médico. El reto técnico consiste en construir un
-flujo reproducible que evite fuga de información, trate correctamente los
-valores faltantes y permita comparar modelos con métricas adecuadas. El reto
-aplicado consiste en convertir el resultado del modelo en una acción útil:
-priorizar al paciente con mayor riesgo para confirmación rápida mediante
-glucemia en ayunas, HbA1c o prueba de tolerancia oral a la glucosa. Estudios
-previos sobre diabetes han mostrado el valor de modelos de clasificación y
-minería de datos para este tipo de problema \cite{kavakiotis2017,sisodia2018}.
+En este contexto, los modelos de machine learning pueden apoyar la priorización de pacientes con mayor probabilidad de diabetes, especialmente cuando se usan como herramientas de apoyo a la decisión clínica y no como sustitutos del diagnóstico médico. El reto técnico consiste en construir un flujo reproducible que evite fuga de información, trate correctamente los valores faltantes y permita comparar modelos con métricas adecuadas. El reto aplicado consiste en convertir el resultado del modelo en una acción útil: priorizar al paciente con mayor riesgo para confirmación rápida mediante glucemia en ayunas, HbA1c o prueba de tolerancia oral a la glucosa. Estudios previos sobre diabetes han mostrado el valor de modelos de clasificación y minería de datos para este tipo de problema \cite{kavakiotis2017,sisodia2018}.
 
-El objetivo del proyecto es desarrollar y evaluar un pipeline de minería de
-datos para predecir la variable binaria \code{Outcome}, donde 0 representa
-ausencia de diabetes y 1 presencia de diabetes, usando variables clínicas y
-antropométricas del dataset Pima Indians.
+El objetivo del proyecto es desarrollar y evaluar un pipeline de minería de datos para predecir la variable binaria \code{Outcome}, donde 0 representa ausencia de diabetes y 1 presencia de diabetes, usando variables clínicas y antropométricas del dataset Pima Indians.
 
-%=============================================================
 \section{Contexto Peruano}
-%=============================================================
 
-La investigación inicial evidencia que el problema de diabetes en el Perú no
-solo es clínico, sino también operativo. Los datos revisados señalan una
-mayor carga en zonas urbanas y costeras, una prevalencia particularmente alta
-en adultos mayores y una red de vigilancia epidemiológica todavía en
-expansión. En 2022, la prevalencia fue mayor en la Costa (6.0\%) que en la
-Selva (4.5\%) y la Sierra (3.0\%). En adultos de 60 años a más, la diabetes
-alcanzó 14.0\% tanto en 2023 como en 2024, lo que aumenta la presión sobre
-consultas, laboratorios y programas de control de crónicos \cite{pp0018,inei_adulto_mayor}.
+La investigación inicial evidencia que el problema de diabetes en el Perú no solo es clínico, sino también operativo. Los datos revisados señalan una mayor carga en zonas urbanas y costeras, una prevalencia particularmente alta en adultos mayores y una red de vigilancia epidemiológica todavía en expansión. En 2022, la prevalencia fue mayor en la Costa (6.0\%) que en la Selva (4.5\%) y la Sierra (3.0\%). En adultos de 60 años a más, la diabetes alcanzó 14.0\% tanto en 2023 como en 2024, lo que aumenta la presión sobre consultas, laboratorios y programas de control de crónicos \cite{pp0018,inei_adulto_mayor}.
 
-Las pruebas diagnósticas más relevantes en la práctica peruana son la
-glucemia en ayunas, la hemoglobina glicosilada HbA1c y la prueba de
-tolerancia oral a la glucosa. La investigación señala umbrales clínicos
-habituales: glucemia en ayunas $\geq 126$ mg/dL, HbA1c $\geq 6.5\%$ o
-glucosa a las dos horas $\geq 200$ mg/dL para diabetes. La HbA1c tiene una
-ventaja operativa importante porque no requiere ayuno; sin embargo, su
-disponibilidad puede variar según la capacidad del establecimiento.
+Las pruebas diagnósticas más relevantes en la práctica peruana son la glucemia en ayunas, la hemoglobina glicosilada HbA1c y la prueba de tolerancia oral a la glucosa. La investigación señala umbrales clínicos habituales: glucemia en ayunas $\geq 126$ mg/dL, HbA1c $\geq 6.5\%$ o glucosa a las dos horas $\geq 200$ mg/dL para diabetes. La HbA1c tiene una ventaja operativa importante porque no requiere ayuno; sin embargo, su disponibilidad puede variar según la capacidad del establecimiento.
 
 \begin{table}[H]
 \centering
@@ -187,14 +90,7 @@ Brecha operativa & No existe un promedio nacional público uniforme desde primer
 
 \subsection{Métricas Operativas de Referencia}
 
-En la práctica peruana, el diagnóstico se apoya en tres pruebas centrales.
-La glucemia en ayunas es ampliamente disponible, pero exige que el paciente
-llegue en ayunas; la HbA1c no requiere ayuno y puede reducir visitas; la
-PTOG de 75 g requiere permanencia mínima de dos horas. La investigación
-inicial también encontró que, en laboratorios privados peruanos, glucosa,
-HbA1c y PTOG suelen entregarse en menos de 24 horas o en 1 día hábil, y que
-en un hospital público grande los exámenes generales se reportan en 1 día
-hábil \cite{multilab_glucosa,multilab_hba1c,loayza2025}.
+En la práctica peruana, el diagnóstico se apoya en tres pruebas centrales. La glucemia en ayunas es ampliamente disponible, pero exige que el paciente llegue en ayunas; la HbA1c no requiere ayuno y puede reducir visitas; la PTOG de 75 g requiere permanencia mínima de dos horas. La investigación inicial también encontró que, en laboratorios privados peruanos, glucosa, HbA1c y PTOG suelen entregarse en menos de 24 horas o en 1 día hábil, y que en un hospital público grande los exámenes generales se reportan en 1 día hábil \cite{multilab_glucosa,multilab_hba1c,loayza2025}.
 
 \begin{table}[H]
 \centering
@@ -212,64 +108,23 @@ PTOG 75 g & $\geq 200$ mg/dL a las 2 h & Más lenta; requiere al menos 2 horas d
 \end{tabularx}
 \end{table}
 
-Para consulta externa, no se encontró un indicador nacional reciente de
-pacientes por día específicamente en consulta de diabetes. Sin embargo, la
-programación hospitalaria del MINSA usa turnos de 4 horas y varios documentos
-de gestión emplean productividades de 4 a 5 consultas por hora. Con esa
-referencia, un consultorio puede atender aproximadamente 16--20 pacientes por
-turno, o 32--40 si opera en doble turno. Esta restricción de capacidad
-refuerza la necesidad de priorizar mejor a los pacientes con mayor riesgo.
+Para consulta externa, no se encontró un indicador nacional reciente de pacientes por día específicamente en consulta de diabetes. Sin embargo, la programación hospitalaria del MINSA usa turnos de 4 horas y varios documentos de gestión emplean productividades de 4 a 5 consultas por hora. Con esa referencia, un consultorio puede atender aproximadamente 16--20 pacientes por turno, o 32--40 si opera en doble turno. Esta restricción de capacidad refuerza la necesidad de priorizar mejor a los pacientes con mayor riesgo.
 
 \subsection{Rol Propuesto del Modelo}
 
-El modelo desarrollado no pretende diagnosticar de forma autónoma. Su función
-aplicada es actuar como un \textbf{filtro de priorización}: ordenar pacientes
-por probabilidad estimada de diabetes y recomendar confirmación rápida para
-los casos con mayor score. Es importante precisar que el cálculo del score
-requiere las variables de entrada del modelo, incluida \code{Glucose}; por
-ello, el modelo no decide si tomar o no una primera prueba, sino que prioriza
-la confirmación diagnóstica y el seguimiento una vez que se dispone de una
-medición inicial. En establecimientos con HbA1c disponible, el
-paciente de alto riesgo podría pasar a prueba el mismo día aunque no haya
-llegado en ayunas. En establecimientos sin HbA1c, el score puede priorizar
-una cita corta para glucemia en ayunas o PTOG. Así, el valor del modelo está
-en reducir esperas, visitas innecesarias y pérdida de seguimiento, no en
-reemplazar el criterio clínico.
+El modelo desarrollado no pretende diagnosticar de forma autónoma. Su función aplicada es actuar como un \textbf{filtro de priorización}: ordenar pacientes por probabilidad estimada de diabetes y recomendar confirmación rápida para los casos con mayor score. Es importante precisar que el cálculo del score requiere las variables de entrada del modelo, incluida \code{Glucose}; por ello, el modelo no decide si tomar o no una primera prueba, sino que prioriza la confirmación diagnóstica y el seguimiento una vez que se dispone de una medición inicial. En establecimientos con HbA1c disponible, el paciente de alto riesgo podría pasar a prueba el mismo día aunque no haya llegado en ayunas. En establecimientos sin HbA1c, el score puede priorizar una cita corta para glucemia en ayunas o PTOG. Así, el valor del modelo está en reducir esperas, visitas innecesarias y pérdida de seguimiento, no en reemplazar el criterio clínico.
 
-%=============================================================
 \section{Revisión de Literatura}
-%=============================================================
 
-La literatura sobre predicción de diabetes con machine learning suele
-trabajar con datos tabulares clínicos, donde las variables antropométricas,
-bioquímicas y demográficas permiten estimar riesgo mediante clasificadores
-supervisados. Revisiones previas han mostrado que algoritmos como SVM, redes
-neuronales, Naive Bayes, árboles de decisión y métodos de ensamble han sido
-ampliamente usados en problemas de diabetes \cite{kavakiotis2017,sisodia2018}.
+La literatura sobre predicción de diabetes con machine learning suele trabajar con datos tabulares clínicos, donde las variables antropométricas, bioquímicas y demográficas permiten estimar riesgo mediante clasificadores supervisados. Revisiones previas han mostrado que algoritmos como SVM, redes neuronales, Naive Bayes, árboles de decisión y métodos de ensamble han sido ampliamente usados en problemas de diabetes \cite{kavakiotis2017,sisodia2018}.
 
-En datos tabulares, los métodos de ensamble suelen ser competitivos porque
-combinan múltiples modelos débiles o moderados para reducir varianza o sesgo.
-Bagging promedia árboles entrenados sobre muestras bootstrap, mientras que
-boosting entrena modelos secuenciales que corrigen errores anteriores.
-Implementaciones como XGBoost y LightGBM han destacado por su eficiencia y
-regularización en problemas de clasificación \cite{chen2016,ke2017}.
+En datos tabulares, los métodos de ensamble suelen ser competitivos porque combinan múltiples modelos débiles o moderados para reducir varianza o sesgo. Bagging promedia árboles entrenados sobre muestras bootstrap, mientras que boosting entrena modelos secuenciales que corrigen errores anteriores. Implementaciones como XGBoost y LightGBM han destacado por su eficiencia y regularización en problemas de clasificación \cite{chen2016,ke2017}.
 
-No obstante, el rendimiento predictivo no es suficiente en salud. Un modelo
-de apoyo clínico debe ser interpretable, trazable y compatible con decisiónes
-operativas. Por ello, SHAP se usa como técnica de explicación para estimar la
-contribución de cada variable a las predicciones del modelo
-\cite{lundberg2017}. En este proyecto, SHAP permite verificar si los
-predictores más influyentes coinciden con la evidencia clínica y con los
-hallazgos estadísticos del análisis exploratorio.
+No obstante, el rendimiento predictivo no es suficiente en salud. Un modelo de apoyo clínico debe ser interpretable, trazable y compatible con decisiónes operativas. Por ello, SHAP se usa como técnica de explicación para estimar la contribución de cada variable a las predicciones del modelo \cite{lundberg2017}. En este proyecto, SHAP permite verificar si los predictores más influyentes coinciden con la evidencia clínica y con los hallazgos estadísticos del análisis exploratorio.
 
-%=============================================================
 \section{Datos y Variables}
-%=============================================================
 
-El análisis utiliza los archivos \code{Training.csv} y \code{Testing.csv},
-correspondientes a una versión del dataset Pima Indians Diabetes disponible en
-Kaggle, ya particionada en entrenamiento y prueba \cite{kaggle}. El conjunto de
-entrenamiento contiene 2\,460 observaciones y 9 columnas. El archivo de prueba original contenía 308 observaciones y 9 columnas; tras verificar coincidencias exactas con el train se eliminaron 6 registros idénticos, por lo que el test final usado para evaluación contiene 302 observaciones. No se encontraron filas duplicadas dentro de cada archivo.
+El análisis utiliza los archivos \code{Training.csv} y \code{Testing.csv}, correspondientes a una versión del dataset Pima Indians Diabetes disponible en Kaggle, ya particionada en entrenamiento y prueba \cite{kaggle}. El conjunto de entrenamiento contiene 2\,460 observaciones y 9 columnas. El archivo de prueba original contenía 308 observaciones y 9 columnas; tras verificar coincidencias exactas con el train se eliminaron 6 registros idénticos, por lo que el test final usado para evaluación contiene 302 observaciones. No se encontraron filas duplicadas dentro de cada archivo.
 
 \begin{table}[H]
 \centering
@@ -300,22 +155,13 @@ entrenamiento contiene 2\,460 observaciones y 9 columnas. El archivo de prueba o
   \label{fig:outcome}
 \end{figure}
 
-La variable objetivo presenta desbalance moderado: en el conjunto de
-entrenamiento hay 1\,519 registros de clase 0 y 941 registros de clase 1.
-Aunque no es un desbalance extremo, sí justifica el uso de métricas como
-ROC AUC, F1, recall, kappa y lift, además de accuracy.
+La variable objetivo presenta desbalance moderado: en el conjunto de entrenamiento hay 1\,519 registros de clase 0 y 941 registros de clase 1. Aunque no es un desbalance extremo, sí justifica el uso de métricas como ROC AUC, F1, recall, kappa y lift, además de accuracy.
 
-%=============================================================
 \section{Metodología}
-%=============================================================
 
 \subsection{Análisis Exploratorio}
 
-El análisis univariado calculó media, mediana, moda, cuartiles, IQR,
-coeficiente de variación, asimetría y curtosis. Para no distorsionar los
-estadísticos, los ceros biológicamente imposibles en \code{Glucose},
-\code{BloodPressure}, \code{SkinThickness}, \code{Insulin} y \code{BMI} se
-trataron como faltantes antes del análisis descriptivo.
+El análisis univariado calculó media, mediana, moda, cuartiles, IQR, coeficiente de variación, asimetría y curtosis. Para no distorsionar los estadísticos, los ceros biológicamente imposibles en \code{Glucose}, \code{BloodPressure}, \code{SkinThickness}, \code{Insulin} y \code{BMI} se trataron como faltantes antes del análisis descriptivo.
 
 \begin{figure}[H]
   \centering
@@ -324,10 +170,7 @@ trataron como faltantes antes del análisis descriptivo.
   \label{fig:histogramas}
 \end{figure}
 
-Los histogramas y boxplots muestran que \code{Glucose}, \code{BMI} y
-\code{Age} tienden a desplazarse hacia valores más altos en la clase
-positiva. En contraste, \code{BloodPressure} y \code{SkinThickness} presentan
-mayor solapamiento entre clases.
+Los histogramas y boxplots muestran que \code{Glucose}, \code{BMI} y \code{Age} tienden a desplazarse hacia valores más altos en la clase positiva. En contraste, \code{BloodPressure} y \code{SkinThickness} presentan mayor solapamiento entre clases.
 
 \begin{figure}[H]
   \centering
@@ -338,13 +181,7 @@ mayor solapamiento entre clases.
 
 \subsection{Normalidad y Relación con el Target}
 
-Se aplicó Shapiro-Wilk para evaluar normalidad. Como las variables no
-siguieron distribución normal, la correlación entre predictores se evaluó
-con Spearman y la relación de cada predictor con \code{Outcome} mediante
-Mann-Whitney U con tamaño de efecto rank-biserial. Conviene señalar que, en
-muestras grandes, Shapiro-Wilk es muy sensible y tiende a rechazar la
-normalidad ante desviaciones pequeñas; por ello, su resultado se usó como
-apoyo para elegir pruebas no paramétricas y no como criterio absoluto.
+Se aplicó Shapiro-Wilk para evaluar normalidad. Como las variables no siguieron distribución normal, la correlación entre predictores se evaluó con Spearman y la relación de cada predictor con \code{Outcome} mediante Mann-Whitney U con tamaño de efecto rank-biserial. Conviene señalar que, en muestras grandes, Shapiro-Wilk es muy sensible y tiende a rechazar la normalidad ante desviaciones pequeñas; por ello, su resultado se usó como apoyo para elegir pruebas no paramétricas y no como criterio absoluto.
 
 \begin{figure}[H]
   \centering
@@ -360,18 +197,11 @@ apoyo para elegir pruebas no paramétricas y no como criterio absoluto.
   \label{fig:mann_whitney}
 \end{figure}
 
-El análisis bivariado confirma que \code{Glucose} es el predictor con mayor
-capacidad discriminativa frente al target. \code{BMI} y \code{Age} también
-aportan información relevante, mientras que \code{BloodPressure} muestra un
-efecto menor.
+El análisis bivariado confirma que \code{Glucose} es el predictor con mayor capacidad discriminativa frente al target. \code{BMI} y \code{Age} también aportan información relevante, mientras que \code{BloodPressure} muestra un efecto menor.
 
 \subsection{Tratamiento de Faltantes}
 
-El conjunto de entrenamiento no contiene ceros en las variables fisiológicas
-críticas, pero sí contiene valores \code{NaN}. La imputación se diseñó con
-criterio idéntico para train y test: se reemplazan ceros imposibles por
-\code{NaN} y luego se imputan los faltantes con medianas globales calculadas
-solo sobre el conjunto de entrenamiento. Este diseño evita la fuga de información del test hacia el entrenamiento y no usa \code{Outcome} para imputar. Para la selección de hiperparámetros, la imputación, winsorización, transformación logarítmica y escalado se encapsularon dentro de un \code{Pipeline}, de modo que cada fold recalcula sus propios parámetros.
+El conjunto de entrenamiento no contiene ceros en las variables fisiológicas críticas, pero sí contiene valores \code{NaN}. La imputación se diseñó con criterio idéntico para train y test: se reemplazan ceros imposibles por \code{NaN} y luego se imputan los faltantes con medianas globales calculadas solo sobre el conjunto de entrenamiento. Este diseño evita la fuga de información del test hacia el entrenamiento y no usa \code{Outcome} para imputar. Para la selección de hiperparámetros, la imputación, winsorización, transformación logarítmica y escalado se encapsularon dentro de un \code{Pipeline}, de modo que cada fold recalcula sus propios parámetros.
 
 \begin{table}[H]
 \centering
@@ -393,14 +223,7 @@ BMI           & 29  & 0 & 1.18 \\
 
 \subsection{Outliers, Transformación y Escalado}
 
-Los outliers univariados se detectaron con la regla IQR$\times 3$, adecuada
-para variables no normales. \code{Insulin} fue la variable con más valores
-extremos: 55 observaciones, equivalentes al 2.24\% del train.
-Además, la distancia de Mahalanobis detectó 158 outliers multivariados
-(6.42\%), usando como umbral el percentil 97.5\% de la distribución
-chi-cuadrado. Dado que este umbral supone normalidad multivariada, que no se
-cumple en estos datos, la distancia de Mahalanobis se interpreta como un
-análisis exploratorio y no como una regla definitiva de exclusión.
+Los outliers univariados se detectaron con la regla IQR$\times 3$, adecuada para variables no normales. \code{Insulin} fue la variable con más valores extremos: 55 observaciones, equivalentes al 2.24\% del train. Además, la distancia de Mahalanobis detectó 158 outliers multivariados (6.42\%), usando como umbral el percentil 97.5\% de la distribución chi-cuadrado. Dado que este umbral supone normalidad multivariada, que no se cumple en estos datos, la distancia de Mahalanobis se interpreta como un análisis exploratorio y no como una regla definitiva de exclusión.
 
 \begin{figure}[H]
   \centering
@@ -416,22 +239,11 @@ análisis exploratorio y no como una regla definitiva de exclusión.
   \label{fig:mahalanobis}
 \end{figure}
 
-Los outliers no se eliminaron, porque representan valores clínicamente
-posibles. Se aplicó winsorizing IQR$\times3$ con límites calculados solo en
-train y luego aplicados a train y test. Posteriormente, las variables con
-asimetría positiva fuerte (\code{Insulin}, \code{DiabetesPedigreeFunction} y
-\code{Age}) se transformaron con \code{log1p}. Finalmente, se usó \code{RobustScaler}, que
-escala con mediana e IQR y es más estable ante valores extremos.
+Los outliers no se eliminaron, porque representan valores clínicamente posibles. Se aplicó winsorizing IQR$\times3$ con límites calculados solo en train y luego aplicados a train y test. Posteriormente, las variables con asimetría positiva fuerte (\code{Insulin}, \code{DiabetesPedigreeFunction} y \code{Age}) se transformaron con \code{log1p}. Finalmente, se usó \code{RobustScaler}, que escala con mediana e IQR y es más estable ante valores extremos.
 
 \subsection{Discretización por Cuantiles}
 
-Para fines exploratorios se discretizaron variables relevantes con
-\code{pd.qcut}, que genera grupos de igual frecuencia (terciles). Esta
-discretización por cuantiles permite comparar la tasa de diabetes entre grupos
-relativos de glucosa, pero no corresponde a los puntos de corte clínicos
-oficiales (por ejemplo, glucemia en ayunas $\geq 126$ mg/dL). El análisis de
-tasa de diabetes por nivel de glucosa mostró un aumento claro del riesgo en la
-categoría alta.
+Para fines exploratorios se discretizaron variables relevantes con \code{pd.qcut}, que genera grupos de igual frecuencia (terciles). Esta discretización por cuantiles permite comparar la tasa de diabetes entre grupos relativos de glucosa, pero no corresponde a los puntos de corte clínicos oficiales (por ejemplo, glucemia en ayunas $\geq 126$ mg/dL). El análisis de tasa de diabetes por nivel de glucosa mostró un aumento claro del riesgo en la categoría alta.
 
 \begin{figure}[H]
   \centering
@@ -442,10 +254,7 @@ categoría alta.
 
 \subsection{Modelado Predictivo}
 
-La selección de hiperparámetros se realizó con \code{GridSearchCV} y
-validación cruzada estratificada de 10 folds sobre el train, usando
-\code{roc\_auc} como métrica de optimización. El test se reservó
-exclusivamente para la evaluación final.
+La selección de hiperparámetros se realizó con \code{GridSearchCV} y validación cruzada estratificada de 10 folds sobre el train, usando \code{roc\_auc} como métrica de optimización. El test se reservó exclusivamente para la evaluación final.
 
 Primero se evaluó KNN para $K=1,\ldots,25$ y luego se afinó mediante \code{GridSearchCV}. El mejor resultado en validación cruzada fue \code{n\_neighbors}$=9$, distancia Manhattan y ponderación por distancia, con ROC AUC CV de 0.9358. En el test independiente, KNN alcanzó ROC AUC de 0.8537. La validación cruzada se calculo con el preprocesamiento encapsulado dentro de un \code{Pipeline}, de modo que la imputación, winsorización, transformación logarítmica y escalado se reajustaron dentro de cada fold.
 
@@ -456,16 +265,9 @@ Primero se evaluó KNN para $K=1,\ldots,25$ y luego se afinó mediante \code{Gri
   \label{fig:knn_k}
 \end{figure}
 
-Luego se entrenaron cinco modelos base: KNN, Naive Bayes, SVM RBF,
-Regresión Logística y MLP. Después se entrenaron cinco ensambles: Bagging
-de árboles, AdaBoost, Gradient Boosting, XGBoost y LightGBM; estos dos
-últimos son implementaciones modernas de gradient boosting para datos
-tabulares \cite{chen2016,ke2017}. Finalmente se
-construyó un \code{StackingClassifier} con los tres modelos de mayor ROC AUC en validación cruzada (LightGBM, Bagging de árboles y XGBoost) como estimadores base y Regresión Logística como meta-aprendiz, generando las meta-características con validación cruzada interna de 10 folds.
+Luego se entrenaron cinco modelos base: KNN, Naive Bayes, SVM RBF, Regresión Logística y MLP. Después se entrenaron cinco ensambles: Bagging de árboles, AdaBoost, Gradient Boosting, XGBoost y LightGBM; estos dos últimos son implementaciones modernas de gradient boosting para datos tabulares \cite{chen2016,ke2017}. Finalmente se construyó un \code{StackingClassifier} con los tres modelos de mayor ROC AUC en validación cruzada (LightGBM, Bagging de árboles y XGBoost) como estimadores base y Regresión Logística como meta-aprendiz, generando las meta-características con validación cruzada interna de 10 folds.
 
-%=============================================================
 \section{Resultados}
-%=============================================================
 
 \subsection{Modelos Base}
 
@@ -488,10 +290,7 @@ MLP & 0.8013 & 0.6629 & 0.5221 & 0.8465 & 0.6931 \\
 \end{tabular}
 \end{table}
 
-La Regresión Logística fue el mejor modelo base, con ROC AUC de 0.8822 y
-accuracy de 0.8179. Este resultado es relevante porque muestra que una
-frontera lineal regularizada puede competir muy bien en datos tabulares con
-señales clínicas relativamente claras.
+La Regresión Logística fue el mejor modelo base, con ROC AUC de 0.8822 y accuracy de 0.8179. Este resultado es relevante porque muestra que una frontera lineal regularizada puede competir muy bien en datos tabulares con señales clínicas relativamente claras.
 
 \begin{figure}[H]
   \centering
@@ -528,9 +327,7 @@ LightGBM & 0.8278 & 0.7204 & 0.5962 & 0.8651 & 0.7302 \\
 \end{tabular}
 \end{table}
 
-Bagging de árboles fue el mejor ensamble y también el mejor modelo global,
-con el mejor valor en todas las métricas reportadas: accuracy, F1, kappa,
-ROC AUC y Gini. LightGBM fue el ensamble más cercano en F1 y accuracy, mientras que XGBoost fue el segúndo mejor ensamble en ROC AUC.
+Bagging de árboles fue el mejor ensamble y también el mejor modelo global, con el mejor valor en todas las métricas reportadas: accuracy, F1, kappa, ROC AUC y Gini. LightGBM fue el ensamble más cercano en F1 y accuracy, mientras que XGBoost fue el segúndo mejor ensamble en ROC AUC.
 
 \begin{figure}[H]
   \centering
@@ -590,16 +387,7 @@ El Stacking Top-3 combinó LightGBM, Bagging y XGBoost, usando Regresión Logís
 
 \subsection{Lift por Decil}
 
-El análisis de lift evalúa la utilidad práctica del score predictivo para
-priorizar pacientes de mayor riesgo. Un lift superior a 1 indica que el
-modelo captura más casos positivos que una selección aleatoria. Las curvas
-de lift muestran que los modelos con mejor ranking concentran una mayor tasa
-de positivos en los primeros deciles. Para el modelo ganador (Bagging), el
-decil de mayor score (10\% superior) alcanza una tasa de positivos de 80.6\%
-frente a una tasa base de 30.2\% ---un lift de 2.67--- y captura el 26.9\% de
-todos los casos con diabetes del test; al ampliar al 20\% de mayor score se
-captura el 51.6\% de los positivos. Estas cifras cuantifican la utilidad del
-score para priorización.
+El análisis de lift evalúa la utilidad práctica del score predictivo para priorizar pacientes de mayor riesgo. Un lift superior a 1 indica que el modelo captura más casos positivos que una selección aleatoria. Las curvas de lift muestran que los modelos con mejor ranking concentran una mayor tasa de positivos en los primeros deciles. Para el modelo ganador (Bagging), el decil de mayor score (10\% superior) alcanza una tasa de positivos de 80.6\% frente a una tasa base de 30.2\% ---un lift de 2.67--- y captura el 26.9\% de todos los casos con diabetes del test; al ampliar al 20\% de mayor score se captura el 51.6\% de los positivos. Estas cifras cuantifican la utilidad del score para priorización.
 
 \begin{figure}[H]
   \centering
@@ -615,25 +403,11 @@ score para priorización.
   \label{fig:lift_acumulado}
 \end{figure}
 
-Desde una perspectiva operativa, este tipo de análisis es especialmente útil
-en salud pública: si los recursos diagnósticos son limitados, un modelo con
-buen lift permite priorizar a quienes tienen mayor probabilidad de diabetes
-para confirmación clínica.
+Desde una perspectiva operativa, este tipo de análisis es especialmente útil en salud pública: si los recursos diagnósticos son limitados, un modelo con buen lift permite priorizar a quienes tienen mayor probabilidad de diabetes para confirmación clínica.
 
-%=============================================================
 \section{Interpretabilidad}
-%=============================================================
 
-La interpretabilidad se trabajó con SHAP, un enfoque basado en valores de
-Shapley para explicar contribuciones de variables a nivel global y local
-\cite{lundberg2017}. Dado que el modelo ganador
-Bagging de árboles de \code{scikit-learn} no es compatible directamente con
-\code{TreeExplainer}, se usó \code{KernelExplainer} para explicar la
-probabilidad de la clase positiva del ganador, con 80 observaciones de
-entrenamiento como background y 40 instancias de test explicadas
-(\code{nsamples}$=200$). Además, se incluyó un análisis complementario con
-\code{TreeExplainer} sobre XGBoost, por ser el mejor modelo de árbol
-compatible con ese método.
+La interpretabilidad se trabajó con SHAP, un enfoque basado en valores de Shapley para explicar contribuciones de variables a nivel global y local \cite{lundberg2017}. Dado que el modelo ganador Bagging de árboles de \code{scikit-learn} no es compatible directamente con \code{TreeExplainer}, se usó \code{KernelExplainer} para explicar la probabilidad de la clase positiva del ganador, con 80 observaciones de entrenamiento como background y 40 instancias de test explicadas (\code{nsamples}$=200$). Además, se incluyó un análisis complementario con \code{TreeExplainer} sobre XGBoost, por ser el mejor modelo de árbol compatible con ese método.
 
 \begin{figure}[H]
   \centering
@@ -656,53 +430,24 @@ compatible con ese método.
   \label{fig:shap_bar_xgb}
 \end{figure}
 
-El resultado central es estable: \code{Glucose} es la variable más influyente
-del modelo ganador. Este hallazgo coincide con el análisis exploratorio, el
-test Mann-Whitney U y el análisis de tasa de diabetes por categorías de
-glucosa. En segúndo plano aparecen variables como \code{BMI}, \code{Age} y
-\code{DiabetesPedigreeFunction}, que también tienen sentido clínico.
+El resultado central es estable: \code{Glucose} es la variable más influyente del modelo ganador. Este hallazgo coincide con el análisis exploratorio, el test Mann-Whitney U y el análisis de tasa de diabetes por categorías de glucosa. En segúndo plano aparecen variables como \code{BMI}, \code{Age} y \code{DiabetesPedigreeFunction}, que también tienen sentido clínico.
 
-%=============================================================
 \section{Discusión}
-%=============================================================
 
-Los resultados muestran que un preprocesamiento cuidadoso es tan importante
-como el algoritmo elegido. El uso de medianas calculadas solo en train evita
-fuga de información; el winsorizing controla valores extremos sin eliminar
-pacientes clínicamente posibles; y \code{RobustScaler} reduce la sensibilidad
-de KNN, SVM y MLP ante outliers.
+Los resultados muestran que un preprocesamiento cuidadoso es tan importante como el algoritmo elegido. El uso de medianas calculadas solo en train evita fuga de información; el winsorizing controla valores extremos sin eliminar pacientes clínicamente posibles; y \code{RobustScaler} reduce la sensibilidad de KNN, SVM y MLP ante outliers.
 
-El hecho de que Bagging supere ligeramente a XGBoost, LightGBM y Stacking
-indica que, para este dataset, reducir varianza mediante múltiples árboles
-bootstrap fue más efectivo que modelos boosting más complejos. Sin embargo,
-la diferencia con Stacking es mínima, por lo que ambos enfoques podrían
-considerarse competitivos. La selección de Bagging se justifica por mayor
-ROC AUC, mayor F1 y menor complejidad operativa frente al stacking.
+El hecho de que Bagging supere ligeramente a XGBoost, LightGBM y Stacking indica que, para este dataset, reducir varianza mediante múltiples árboles bootstrap fue más efectivo que modelos boosting más complejos. Sin embargo, la diferencia con Stacking es mínima, por lo que ambos enfoques podrían considerarse competitivos. La selección de Bagging se justifica por mayor ROC AUC, mayor F1 y menor complejidad operativa frente al stacking.
 
-En términos clínicos, el modelo no reemplaza las pruebas diagnósticas. Su
-valor está en la priorización: ordenar pacientes por riesgo y apoyar circuitos
-de confirmación con glucemia, HbA1c o prueba de tolerancia oral a la glucosa.
-Esto dialoga directamente con la investigación inicial sobre Perú, donde una
-de las brechas principales no es la falta de criterios diagnósticos, sino la
-heterogeneidad en tiempos, disponibilidad de pruebas y seguimiento.
+En términos clínicos, el modelo no reemplaza las pruebas diagnósticas. Su valor está en la priorización: ordenar pacientes por riesgo y apoyar circuitos de confirmación con glucemia, HbA1c o prueba de tolerancia oral a la glucosa. Esto dialoga directamente con la investigación inicial sobre Perú, donde una de las brechas principales no es la falta de criterios diagnósticos, sino la heterogeneidad en tiempos, disponibilidad de pruebas y seguimiento.
 
 \subsection{Impacto Esperado en el Circuito de Atención}
 
-La investigación inicial muestra que el diagnóstico puede resolverse rápido
-cuando hay laboratorio disponible, pero el sistema no lo logra de manera
-homogénea. Las demoras aparecen cuando el paciente no llega en ayunas, cuando
-debe regresar para una segúnda prueba, cuando no hay HbA1c disponible o
-cuando se pierde continuidad entre resultado anormal y confirmación médica.
-El modelo puede contribuir en tres puntos:
+La investigación inicial muestra que el diagnóstico puede resolverse rápido cuando hay laboratorio disponible, pero el sistema no lo logra de manera homogénea. Las demoras aparecen cuando el paciente no llega en ayunas, cuando debe regresar para una segúnda prueba, cuando no hay HbA1c disponible o cuando se pierde continuidad entre resultado anormal y confirmación médica. El modelo puede contribuir en tres puntos:
 
 \begin{enumerate}[leftmargin=1.3em,itemsep=1pt]
-  \item \textbf{Triaje tras la medición inicial:} una vez registradas las
-  variables de entrada del paciente ---incluida una medición de glucosa---,
-  usar el score para clasificar a los pacientes en riesgo alto, medio y bajo.
-  \item \textbf{Laboratorio:} priorizar HbA1c o glucemia confirmatoria para
-  los pacientes con score alto, reduciendo visitas repetidas.
-  \item \textbf{Seguimiento:} generar una lista ordenada de pacientes que no
-  deberían perderse en el circuito de control de crónicos.
+  \item \textbf{Triaje tras la medición inicial:} una vez registradas las variables de entrada del paciente ---incluida una medición de glucosa---, usar el score para clasificar a los pacientes en riesgo alto, medio y bajo.
+  \item \textbf{Laboratorio:} priorizar HbA1c o glucemia confirmatoria para los pacientes con score alto, reduciendo visitas repetidas.
+  \item \textbf{Seguimiento:} generar una lista ordenada de pacientes que no deberían perderse en el circuito de control de crónicos.
 \end{enumerate}
 
 \begin{table}[H]
@@ -723,185 +468,99 @@ Sobrecarga hospitalaria & Derivar casos de menor riesgo a seguimiento programado
 \end{tabularx}
 \end{table}
 
-En un escenario ideal, el modelo se integraría a una estrategia tipo
-HEARTS-D en atención primaria: el personal toma variables simples, calcula el
-score, prioriza confirmación y reduce derivaciones innecesarias al hospital.
-La reducción no se expresa como ``curar'' la diabetes, sino como disminuir
-tiempos muertos, mejorar detección oportuna y concentrar recursos en quienes
-tienen mayor probabilidad de requerir diagnóstico y manejo temprano
-\cite{ops2024}.
+En un escenario ideal, el modelo se integraría a una estrategia tipo HEARTS-D en atención primaria: el personal toma variables simples, calcula el score, prioriza confirmación y reduce derivaciones innecesarias al hospital. La reducción no se expresa como ``curar'' la diabetes, sino como disminuir tiempos muertos, mejorar detección oportuna y concentrar recursos en quienes tienen mayor probabilidad de requerir diagnóstico y manejo temprano \cite{ops2024}.
 
 \subsection{Limitaciones}
 
-El estudio presenta varias limitaciones que conviene declarar de forma
-explícita:
+El estudio presenta varias limitaciones que conviene declarar de forma explícita:
 
 \begin{enumerate}[leftmargin=1.3em,itemsep=1pt]
-  \item \textbf{Validez externa.} El modelo se entrenó y evaluó sobre el
-  dataset Pima Indians. El contexto peruano motiva y justifica el problema,
-  pero los resultados no están validados en población peruana; por lo tanto,
-  no debe asumirse transferibilidad directa a establecimientos del país.
+  \item \textbf{Validez externa.} El modelo se entrenó y evaluó sobre el dataset Pima Indians. El contexto peruano motiva y justifica el problema, pero los resultados no están validados en población peruana; por lo tanto, no debe asumirse transferibilidad directa a establecimientos del país.
   \item \textbf{Preprocesamiento y validación cruzada.} El preprocesamiento se encapsuló en un \code{Pipeline} durante \code{GridSearchCV}, por lo que cada fold recalcula imputación, winsorización, transformación logarítmica y escalado. Aun así, las métricas de CV siguen siendo estimaciones internas del train y no sustituyen la evaluación final en test.
   \item \textbf{Selección del stacking.} El trío de modelos base del stacking se eligió por ROC AUC promedio en validación cruzada sobre train. Esta estrategia evita usar el test para seleccionar los estimadores, aunque el stacking conserva mayor complejidad operativa que el Bagging individual.
   \item \textbf{Coincidencias train-test.} Se detectaron 6 registros idénticos entre train y test y se eliminaron del conjunto de prueba antes de la evaluación final. El test final quedó con 302 observaciones.
-  \item \textbf{Discretización por cuantiles.} La discretización de glucosa se
-  realizó con cuantiles (terciles), útil para comparar riesgo relativo, y no
-  con los umbrales clínicos oficiales; por ello, su lectura es exploratoria.
-  \item \textbf{Dependencia de la variable de entrada.} El score requiere
-  \code{Glucose} como insumo, de modo que el modelo apoya la priorización de
-  la confirmación y el seguimiento posteriores a una medición inicial, no la
-  decisión de solicitar la primera prueba.
+  \item \textbf{Discretización por cuantiles.} La discretización de glucosa se realizó con cuantiles (terciles), útil para comparar riesgo relativo, y no con los umbrales clínicos oficiales; por ello, su lectura es exploratoria.
+  \item \textbf{Dependencia de la variable de entrada.} El score requiere \code{Glucose} como insumo, de modo que el modelo apoya la priorización de la confirmación y el seguimiento posteriores a una medición inicial, no la decisión de solicitar la primera prueba.
 \end{enumerate}
 
-%=============================================================
 \section{Conclusiones}
-%=============================================================
 
-\begin{enumerate}[leftmargin=1.3em,itemsep=2pt]
+\begin{itemize}[leftmargin=1.3em,itemsep=2pt]
   \item El pipeline desarrollado es consistente y reduce la fuga de información: las coincidencias exactas entre train y test se eliminaron del test, y la imputación, winsorización, transformación logarítmica y escala se encapsularon dentro de \code{Pipeline} para la validación cruzada.
-  \item La variable más importante para distinguir pacientes con y sin
-  diabetes fue \code{Glucose}, confirmada por EDA, Mann-Whitney U, tasa por
-  categorías y SHAP.
+  \item La variable más importante para distinguir pacientes con y sin diabetes fue \code{Glucose}, confirmada por EDA, Mann-Whitney U, tasa por categorías y SHAP.
   \item El mejor modelo base fue Regresión Logística, con ROC AUC de 0.8822.
-  \item El mejor modelo global fue Bagging de árboles, con ROC AUC de 0.8937,
-  F1 de 0.7222 y accuracy de 0.8344.
-  \item El Stacking Top-3 fue altamente competitivo, con ROC AUC de 0.8889,
-  pero no superó al Bagging individual.
-  \item La integración del modelo con un circuito clínico real debería
-  enfocarse en priorización de riesgo, no en diagnóstico autónomo.
-  \item En el contexto peruano, un modelo de este tipo puede aportar valor si
-  se combina con disponibilidad de pruebas, confirmación diagnóstica rápida y
-  seguimiento en atención primaria.
-  \item A partir de la investigación inicial, el principal aporte operativo
-  del modelo sería reducir el tiempo entre primera sospecha y confirmación:
-  una vez disponibles las variables de entrada, los pacientes con score alto
-  deberían priorizarse para confirmación (HbA1c, glucemia en ayunas o PTOG,
-  según disponibilidad local) y seguimiento.
-  \item El modelo también puede ayudar a reducir congestión: si un consultorio
-  atiende alrededor de 16--20 pacientes por turno, ordenar por riesgo permite
-  usar los cupos clínicos y de laboratorio con mayor eficiencia.
-\end{enumerate}
+  \item El mejor modelo global fue Bagging de árboles, con ROC AUC de 0.8937, F1 de 0.7222 y accuracy de 0.8344.
+  \item El Stacking Top-3 fue altamente competitivo, con ROC AUC de 0.8889, pero no superó al Bagging individual.
+  \item La integración del modelo con un circuito clínico real debería enfocarse en priorización de riesgo, no en diagnóstico autónomo.
+  \item En el contexto peruano, un modelo de este tipo puede aportar valor si se combina con disponibilidad de pruebas, confirmación diagnóstica rápida y seguimiento en atención primaria.
+  \item A partir de la investigación inicial, el principal aporte operativo del modelo sería reducir el tiempo entre primera sospecha y confirmación: una vez disponibles las variables de entrada, los pacientes con score alto deberían priorizarse para confirmación (HbA1c, glucemia en ayunas o PTOG, según disponibilidad local) y seguimiento.
+  \item El modelo también puede ayudar a reducir congestión: si un consultorio atiende alrededor de 16--20 pacientes por turno, ordenar por riesgo permite usar los cupos clínicos y de laboratorio con mayor eficiencia.
+\end{itemize}
 
-%=============================================================
 \section{Trabajo Futuro}
-%=============================================================
 
-Como trabajo futuro se recomienda validar el modelo con datos locales
-peruanos, incorporar variables de laboratorio como HbA1c o glucosa en ayunas
-cuando estén disponibles, calibrar probabilidades con métodos como Platt o
-isotonic regression, y evaluar fairness por edad y región. En el plano
-metodológico, se recomienda ampliar la validación externa, calibrar el umbral de decisión según costos clínicos y monitorear estabilidad temporal del modelo. Finalmente, se propone convertir el artefacto
-exportado \code{mejor\_modelo\_diabetes.pkl} en una herramienta simple de
-inferencia para nuevos pacientes.
+Como trabajo futuro se recomienda validar el modelo con datos locales peruanos, incorporar variables de laboratorio como HbA1c o glucosa en ayunas cuando estén disponibles, calibrar probabilidades con métodos como Platt o isotonic regression, y evaluar fairness por edad y región. En el plano metodológico, se recomienda ampliar la validación externa, calibrar el umbral de decisión según costos clínicos y monitorear estabilidad temporal del modelo. Finalmente, se propone convertir el artefacto exportado \code{mejor\_modelo\_diabetes.pkl} en una herramienta simple de inferencia para nuevos pacientes.
 
-%=============================================================
 \section*{Agradecimientos}
-%=============================================================
 
-Los autores agradecen a la Universidad ESAN y al curso de Minería de Datos
-por el marco académico para el desarrollo del proyecto. Asimismo, se reconoce
-el uso del dataset Pima Indians Diabetes y de fuentes públicas nacionales
-para contextualizar la problemática de diabetes en el Perú.
+Los autores agradecen a la Universidad ESAN y al curso de Minería de Datos por el marco académico para el desarrollo del proyecto. Asimismo, se reconoce el uso del dataset Pima Indians Diabetes y de fuentes públicas nacionales para contextualizar la problemática de diabetes en el Perú.
 
-%=============================================================
-\section*{Referencias}
-%=============================================================
-
-\begingroup
-\renewcommand{\section}[2]{}
-\begin{thebibliography}{99}
+\begin{thebibliography}{00}
 
 \bibitem{idf2021}
-International Diabetes Federation,
-\textit{IDF Diabetes Atlas}, 10th ed., Brussels: IDF, 2021.
+International Diabetes Federation, \textit{IDF Diabetes Atlas}, 10th ed., Brussels: IDF, 2021.
 
 \bibitem{who2021}
-World Health Organization,
-``Diabetes,'' WHO, 2021.
-\url{https://www.who.int/news-room/fact-sheets/detail/diabetes}
+World Health Organization, ``Diabetes,'' WHO, 2021. \url{https://www.who.int/news-room/fact-sheets/detail/diabetes}
 
 \bibitem{kaggle}
-E. Aboelnaga,
-``Diabetes Dataset,'' Kaggle, 2023.
-\url{https://www.kaggle.com/datasets/ehababoelnaga/diabetes-dataset}
+E. Aboelnaga, ``Diabetes Dataset,'' Kaggle, 2023. \url{https://www.kaggle.com/datasets/ehababoelnaga/diabetes-dataset}
 
 \bibitem{kavakiotis2017}
-I. Kavakiotis et al.,
-``Machine Learning and Data Mining Methods in Diabetes Research,''
-\textit{Computational and Structural Biotechnology Journal}, vol. 15,
-pp. 104--116, 2017.
+I. Kavakiotis et al., ``Machine Learning and Data Mining Methods in Diabetes Research,'' \textit{Computational and Structural Biotechnology Journal}, vol. 15, pp. 104--116, 2017.
 
 \bibitem{sisodia2018}
-D. Sisodia and D. S. Sisodia,
-``Prediction of Diabetes Using Classification Algorithms,''
-\textit{Procedia Computer Science}, vol. 132, pp. 1578--1585, 2018.
+D. Sisodia and D. S. Sisodia, ``Prediction of Diabetes Using Classification Algorithms,'' \textit{Procedia Computer Science}, vol. 132, pp. 1578--1585, 2018.
 
 \bibitem{chen2016}
-T. Chen and C. Guestrin,
-``XGBoost: A Scalable Tree Boosting System,''
-in \textit{Proc. 22nd ACM SIGKDD}, pp. 785--794, 2016.
+T. Chen and C. Guestrin, ``XGBoost: A Scalable Tree Boosting System,'' in \textit{Proc. 22nd ACM SIGKDD}, pp. 785--794, 2016.
 
 \bibitem{ke2017}
-G. Ke et al.,
-``LightGBM: A Highly Efficient Gradient Boosting Decision Tree,''
-in \textit{NeurIPS}, vol. 30, 2017.
+G. Ke et al., ``LightGBM: A Highly Efficient Gradient Boosting Decision Tree,'' in \textit{NeurIPS}, vol. 30, 2017.
 
 \bibitem{lundberg2017}
-S. M. Lundberg and S.-I. Lee,
-``A Unified Approach to Interpreting Model Predictions,''
-in \textit{NeurIPS}, vol. 30, 2017.
+S. M. Lundberg and S.-I. Lee, ``A Unified Approach to Interpreting Model Predictions,'' in \textit{NeurIPS}, vol. 30, 2017.
 
 \bibitem{minsa2024}
-Ministerio de Salud del Perú,
-``La diabetes se constituye como séptima causa de muerte en nuestro país,''
-MINSA, 2024.
+Ministerio de Salud del Perú, ``La diabetes se constituye como séptima causa de muerte en nuestro país,'' MINSA, 2024.
 
 \bibitem{inei2023}
-Instituto Nacional de Estadística e Informática,
-\textit{Perú: Enfermedades No Transmisibles y Transmisibles, 2023},
-INEI, 2024.
+Instituto Nacional de Estadística e Informática, \textit{Perú: Enfermedades No Transmisibles y Transmisibles, 2023}, INEI, 2024.
 
 \bibitem{ops2024}
-Organización Panamericana de la Salud,
-``HEARTS en Perú: hacia una mejor atención de la diabetes en el primer nivel,''
-OPS/OMS, 2024.
+Organización Panamericana de la Salud, ``HEARTS en Perú: hacia una mejor atención de la diabetes en el primer nivel,'' OPS/OMS, 2024.
 
 \bibitem{cdc2024}
-Centro Nacional de Epidemiología, Prevención y Control de Enfermedades,
-``Actualización en vigilancia de diabetes: casos registrados enero 2023--junio 2024,''
-CDC Perú, 2024.
+Centro Nacional de Epidemiología, Prevención y Control de Enfermedades, ``Actualización en vigilancia de diabetes: casos registrados enero 2023--junio 2024,'' CDC Perú, 2024.
 
 \bibitem{cdc2025}
-Centro Nacional de Epidemiología, Prevención y Control de Enfermedades,
-``Sala situacional de diabetes: red notificante nacional,''
-CDC Perú, actualización 2025.
+Centro Nacional de Epidemiología, Prevención y Control de Enfermedades, ``Sala situacional de diabetes: red notificante nacional,'' CDC Perú, actualización 2025.
 
 \bibitem{pp0018}
-Ministerio de Salud del Perú,
-``Programa Presupuestal 0018: enfermedades no transmisibles, reportes de diabetes,''
-MINSA, 2023--2025.
+Ministerio de Salud del Perú, ``Programa Presupuestal 0018: enfermedades no transmisibles, reportes de diabetes,'' MINSA, 2023--2025.
 
 \bibitem{inei_adulto_mayor}
-Instituto Nacional de Estadística e Informática,
-``Situación de la población adulta mayor,''
-INEI, 2025.
+Instituto Nacional de Estadística e Informática, ``Situación de la población adulta mayor,'' INEI, 2025.
 
 \bibitem{multilab_glucosa}
-Multilab,
-``Ficha de examen: glucosa basal y postprandial,''
-Laboratorio clínico, 2024--2026.
+Multilab, ``Ficha de examen: glucosa basal y postprandial,'' Laboratorio clínico, 2024--2026.
 
 \bibitem{multilab_hba1c}
-Multilab,
-``Hemoglobina glicosilada HbA1c: información y tiempos de entrega,''
-Laboratorio clínico, 2024--2026.
+Multilab, ``Hemoglobina glicosilada HbA1c: información y tiempos de entrega,'' Laboratorio clínico, 2024--2026.
 
 \bibitem{loayza2025}
-Hospital Nacional Arzobispo Loayza,
-``Solicitar exámenes de laboratorio: tiempos de entrega de exámenes generales,''
-Gobierno del Perú, 2025.
+Hospital Nacional Arzobispo Loayza, ``Solicitar exámenes de laboratorio: tiempos de entrega de exámenes generales,'' Gobierno del Perú, 2025.
 
 \end{thebibliography}
-\endgroup
 
 \end{document}
