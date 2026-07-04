@@ -85,10 +85,10 @@
   entrenamiento de modelos base, modelos de ensamble, stacking, evaluación por
   métricas predictivas e interpretabilidad con SHAP.
   El conjunto de entrenamiento contiene 2\,460 registros y el conjunto de
-  prueba 308 registros, ambos sin duplicados. El mejor modelo final fue
-  \textbf{Bagging de árboles}, con \metric{ROC AUC = 0.8975},
-  \metric{F1 = 0.7312} y \metric{accuracy = 0.8377} en test. El modelo
-  Stacking Top-3 alcanzó un ROC AUC de 0.8931, muy cercano al ganador, pero
+  prueba 302 registros, después de retirar 6 coincidencias exactas con el train. El mejor modelo final fue
+  \textbf{Bagging de árboles}, con \metric{ROC AUC = 0.8937},
+  \metric{F1 = 0.7222} y \metric{accuracy = 0.8344} en test. El modelo
+  Stacking Top-3 alcanzó un ROC AUC de 0.8889, muy cercano al ganador, pero
   sin superarlo. La interpretabilidad SHAP confirma que \code{Glucose} es la
   variable más influyente. Como aporte aplicado, se propone usar el score del
   modelo como mecanismo de priorización: dado que su cálculo requiere las
@@ -255,7 +255,7 @@ Implementaciones como XGBoost y LightGBM han destacado por su eficiencia y
 regularización en problemas de clasificación \cite{chen2016,ke2017}.
 
 No obstante, el rendimiento predictivo no es suficiente en salud. Un modelo
-de apoyo clínico debe ser interpretable, trazable y compatible con decisiones
+de apoyo clínico debe ser interpretable, trazable y compatible con decisiónes
 operativas. Por ello, SHAP se usa como técnica de explicación para estimar la
 contribución de cada variable a las predicciones del modelo
 \cite{lundberg2017}. En este proyecto, SHAP permite verificar si los
@@ -269,12 +269,7 @@ hallazgos estadísticos del análisis exploratorio.
 El análisis utiliza los archivos \code{Training.csv} y \code{Testing.csv},
 correspondientes a una versión del dataset Pima Indians Diabetes disponible en
 Kaggle, ya particionada en entrenamiento y prueba \cite{kaggle}. El conjunto de
-entrenamiento contiene 2\,460 observaciones y 9 columnas, y el de prueba 308
-observaciones y 9 columnas. No se encontraron filas duplicadas dentro de cada
-archivo. Adicionalmente se verificó la coincidencia entre train y test: se
-identificaron 6 registros idénticos, equivalentes al 1.9\% del test, un volumen
-bajo cuyo efecto sobre la evaluación es marginal y que se documenta en la
-sección de Limitaciones.
+entrenamiento contiene 2\,460 observaciones y 9 columnas. El archivo de prueba original contenía 308 observaciones y 9 columnas; tras verificar coincidencias exactas con el train se eliminaron 6 registros idénticos, por lo que el test final usado para evaluación contiene 302 observaciones. No se encontraron filas duplicadas dentro de cada archivo.
 
 \begin{table}[H]
 \centering
@@ -376,12 +371,7 @@ El conjunto de entrenamiento no contiene ceros en las variables fisiológicas
 críticas, pero sí contiene valores \code{NaN}. La imputación se diseñó con
 criterio idéntico para train y test: se reemplazan ceros imposibles por
 \code{NaN} y luego se imputan los faltantes con medianas globales calculadas
-solo sobre el conjunto de entrenamiento. Este diseño evita la fuga de
-información del test hacia el entrenamiento y no usa \code{Outcome} para
-imputar. No obstante, la imputación, la winsorización y el escalado se
-ajustaron sobre todo el conjunto de entrenamiento antes de la validación
-cruzada; en un diseño estricto, cada fold debería recalcular sus propios
-parámetros dentro de un \code{Pipeline}, lo que se discute en Limitaciones.
+solo sobre el conjunto de entrenamiento. Este diseño evita la fuga de información del test hacia el entrenamiento y no usa \code{Outcome} para imputar. Para la selección de hiperparámetros, la imputación, winsorización, transformación logarítmica y escalado se encapsularon dentro de un \code{Pipeline}, de modo que cada fold recalcula sus propios parámetros.
 
 \begin{table}[H]
 \centering
@@ -457,14 +447,7 @@ validación cruzada estratificada de 10 folds sobre el train, usando
 \code{roc\_auc} como métrica de optimización. El test se reservó
 exclusivamente para la evaluación final.
 
-Primero se evaluó KNN para $K=1,\ldots,25$. El mejor resultado en validación
-cruzada fue $K=8$, con ROC AUC CV de 0.9229. Este valor es superior al ROC AUC
-de KNN en el test independiente (0.8637). La diferencia es esperable: la
-validación cruzada se calculó sobre el train, cuyo preprocesamiento se ajustó
-antes de la CV, lo que vuelve las estimaciones de CV algo optimistas; en KNN el
-efecto se acentúa por su sensibilidad a la escala y a la densidad local.
-Integrar el preprocesamiento dentro del pipeline de validación cruzada
-reduciría esta brecha (véase Limitaciones).
+Primero se evaluó KNN para $K=1,\ldots,25$ y luego se afinó mediante \code{GridSearchCV}. El mejor resultado en validación cruzada fue \code{n\_neighbors}$=9$, distancia Manhattan y ponderación por distancia, con ROC AUC CV de 0.9358. En el test independiente, KNN alcanzó ROC AUC de 0.8537. La validación cruzada se calculo con el preprocesamiento encapsulado dentro de un \code{Pipeline}, de modo que la imputación, winsorización, transformación logarítmica y escalado se reajustaron dentro de cada fold.
 
 \begin{figure}[H]
   \centering
@@ -478,14 +461,7 @@ Regresión Logística y MLP. Después se entrenaron cinco ensambles: Bagging
 de árboles, AdaBoost, Gradient Boosting, XGBoost y LightGBM; estos dos
 últimos son implementaciones modernas de gradient boosting para datos
 tabulares \cite{chen2016,ke2017}. Finalmente se
-construyó un \code{StackingClassifier} con los tres modelos de mayor ROC AUC en
-la comparación global (Bagging de árboles, LightGBM y XGBoost) como estimadores
-base y Regresión Logística como meta-aprendiz, generando las meta-características
-con validación cruzada interna de 10 folds. Cabe aclarar que esa comparación
-global se realizó sobre el test, por lo que la selección del trío para el
-stacking se apoya en el desempeño de test; este punto se detalla en
-Limitaciones. La elección del modelo final, en cambio, no depende de dicha
-selección, pues el Bagging es individualmente el mejor en todas las métricas.
+construyó un \code{StackingClassifier} con los tres modelos de mayor ROC AUC en validación cruzada (LightGBM, Bagging de árboles y XGBoost) como estimadores base y Regresión Logística como meta-aprendiz, generando las meta-características con validación cruzada interna de 10 folds.
 
 %=============================================================
 \section{Resultados}
@@ -503,17 +479,17 @@ selección, pues el Bagging es individualmente el mejor en todas las métricas.
 \toprule
 \textbf{Modelo} & \textbf{Acc.} & \textbf{F1} & \textbf{Kappa} & \textbf{AUC} & \textbf{Gini} \\
 \midrule
-KNN & 0.8019 & \textbf{0.6965} & \textbf{0.5507} & 0.8637 & 0.7274 \\
-Naive Bayes & 0.7727 & 0.6729 & 0.5033 & 0.8643 & 0.7285 \\
-SVM & 0.7532 & 0.6042 & 0.4252 & 0.8087 & 0.6173 \\
-Reg. Logística & \textbf{0.8084} & 0.6776 & 0.5414 & \textbf{0.8742} & \textbf{0.7484} \\
-MLP & 0.8052 & 0.6739 & 0.5350 & 0.8609 & 0.7217 \\
+KNN & 0.7583 & 0.6256 & 0.4487 & 0.8537 & 0.7074 \\
+Naive Bayes & 0.7781 & 0.6763 & 0.5119 & 0.8711 & 0.7422 \\
+SVM & 0.7483 & 0.5914 & 0.4099 & 0.8026 & 0.6052 \\
+Reg. Logística & \textbf{0.8179} & \textbf{0.6893} & \textbf{0.5605} & \textbf{0.8822} & \textbf{0.7644} \\
+MLP & 0.8013 & 0.6629 & 0.5221 & 0.8465 & 0.6931 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-La Regresión Logística fue el mejor modelo base, con ROC AUC de 0.8742 y
-accuracy de 0.8084. Este resultado es relevante porque muestra que una
+La Regresión Logística fue el mejor modelo base, con ROC AUC de 0.8822 y
+accuracy de 0.8179. Este resultado es relevante porque muestra que una
 frontera lineal regularizada puede competir muy bien en datos tabulares con
 señales clínicas relativamente claras.
 
@@ -543,19 +519,18 @@ señales clínicas relativamente claras.
 \toprule
 \textbf{Modelo} & \textbf{Acc.} & \textbf{F1} & \textbf{Kappa} & \textbf{AUC} & \textbf{Gini} \\
 \midrule
-Bagging & \textbf{0.8377} & \textbf{0.7312} & \textbf{0.6149} & \textbf{0.8975} & \textbf{0.7949} \\
-AdaBoost & 0.8019 & 0.6738 & 0.5316 & 0.8520 & 0.7039 \\
-Gradient Boosting & 0.8052 & 0.6739 & 0.5350 & 0.8640 & 0.7280 \\
-XGBoost & 0.8182 & 0.7083 & 0.5764 & 0.8767 & 0.7534 \\
-LightGBM & 0.8214 & 0.7150 & 0.5853 & 0.8791 & 0.7582 \\
+Bagging & \textbf{0.8344} & \textbf{0.7222} & \textbf{0.6043} & \textbf{0.8937} & \textbf{0.7873} \\
+AdaBoost & 0.8013 & 0.6667 & 0.5252 & 0.8499 & 0.6999 \\
+Gradient Boosting & 0.8013 & 0.6629 & 0.5221 & 0.8596 & 0.7193 \\
+XGBoost & 0.8146 & 0.6989 & 0.5652 & 0.8738 & 0.7476 \\
+LightGBM & 0.8278 & 0.7204 & 0.5962 & 0.8651 & 0.7302 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 Bagging de árboles fue el mejor ensamble y también el mejor modelo global,
 con el mejor valor en todas las métricas reportadas: accuracy, F1, kappa,
-ROC AUC y Gini. LightGBM y XGBoost fueron los ensambles que más se le
-acercaron, pero quedaron por debajo en ROC AUC y F1.
+ROC AUC y Gini. LightGBM fue el ensamble más cercano en F1 y accuracy, mientras que XGBoost fue el segúndo mejor ensamble en ROC AUC.
 
 \begin{figure}[H]
   \centering
@@ -582,17 +557,17 @@ acercaron, pero quedaron por debajo en ROC AUC y F1.
 \toprule
 \textbf{Rank} & \textbf{Modelo} & \textbf{AUC} & \textbf{F1} \\
 \midrule
-1 & Bagging de árboles & \textbf{0.8975} & \textbf{0.7312} \\
-2 & Stacking Top-3 & 0.8931 & 0.7196 \\
-3 & LightGBM & 0.8791 & 0.7150 \\
-4 & XGBoost & 0.8767 & 0.7083 \\
-5 & Regresión Logística & 0.8742 & 0.6776 \\
-6 & Naive Bayes & 0.8643 & 0.6729 \\
-7 & Gradient Boosting & 0.8640 & 0.6739 \\
-8 & KNN & 0.8637 & 0.6965 \\
-9 & MLP & 0.8609 & 0.6739 \\
-10 & AdaBoost & 0.8520 & 0.6738 \\
-11 & SVM & 0.8087 & 0.6042 \\
+1 & Bagging de árboles & \textbf{0.8937} & \textbf{0.7222} \\
+2 & Stacking Top-3 & 0.8889 & 0.7174 \\
+3 & Regresión Logística & 0.8822 & 0.6893 \\
+4 & XGBoost & 0.8738 & 0.6989 \\
+5 & Naive Bayes & 0.8711 & 0.6763 \\
+6 & LightGBM & 0.8651 & 0.7204 \\
+7 & Gradient Boosting & 0.8596 & 0.6629 \\
+8 & KNN & 0.8537 & 0.6256 \\
+9 & AdaBoost & 0.8499 & 0.6667 \\
+10 & MLP & 0.8465 & 0.6629 \\
+11 & SVM & 0.8026 & 0.5914 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -601,13 +576,10 @@ acercaron, pero quedaron por debajo en ROC AUC y F1.
   \centering
   \includegraphics[width=\columnwidth]{20_metricas_globales_modelos.png}
   \caption{Comparación global de métricas entre modelos.}
-  \label{fig:metricas_globales}
+  \label{fig:métricas_globales}
 \end{figure}
 
-El Stacking Top-3 combinó Bagging, LightGBM y XGBoost, usando
-Regresión Logística como meta-aprendiz. Alcanzó ROC AUC de 0.8931, apenas
-0.0044 por debajo del Bagging individual. Por tanto, aunque el stacking es
-competitivo, no se selecciona como modelo final porque no mejora al ganador.
+El Stacking Top-3 combinó LightGBM, Bagging y XGBoost, usando Regresión Logística como meta-aprendiz. Alcanzó ROC AUC de 0.8889, apenas 0.0048 por debajo del Bagging individual. Por tanto, aunque el stacking es competitivo, no se selecciona como modelo final porque no mejora al ganador.
 
 \begin{figure}[H]
   \centering
@@ -660,7 +632,7 @@ Bagging de árboles de \code{scikit-learn} no es compatible directamente con
 probabilidad de la clase positiva del ganador, con 80 observaciones de
 entrenamiento como background y 40 instancias de test explicadas
 (\code{nsamples}$=200$). Además, se incluyó un análisis complementario con
-\code{TreeExplainer} sobre LightGBM, por ser el mejor modelo de árbol
+\code{TreeExplainer} sobre XGBoost, por ser el mejor modelo de árbol
 compatible con ese método.
 
 \begin{figure}[H]
@@ -680,14 +652,14 @@ compatible con ese método.
 \begin{figure}[H]
   \centering
   \includegraphics[width=\columnwidth]{23_complemento_arbol_importancia_global_shap.png}
-  \caption{Importancia global SHAP complementaria para LightGBM.}
+  \caption{Importancia global SHAP complementaria para XGBoost.}
   \label{fig:shap_bar_xgb}
 \end{figure}
 
 El resultado central es estable: \code{Glucose} es la variable más influyente
 del modelo ganador. Este hallazgo coincide con el análisis exploratorio, el
 test Mann-Whitney U y el análisis de tasa de diabetes por categorías de
-glucosa. En segundo plano aparecen variables como \code{BMI}, \code{Age} y
+glucosa. En segúndo plano aparecen variables como \code{BMI}, \code{Age} y
 \code{DiabetesPedigreeFunction}, que también tienen sentido clínico.
 
 %=============================================================
@@ -719,7 +691,7 @@ heterogeneidad en tiempos, disponibilidad de pruebas y seguimiento.
 La investigación inicial muestra que el diagnóstico puede resolverse rápido
 cuando hay laboratorio disponible, pero el sistema no lo logra de manera
 homogénea. Las demoras aparecen cuando el paciente no llega en ayunas, cuando
-debe regresar para una segunda prueba, cuando no hay HbA1c disponible o
+debe regresar para una segúnda prueba, cuando no hay HbA1c disponible o
 cuando se pierde continuidad entre resultado anormal y confirmación médica.
 El modelo puede contribuir en tres puntos:
 
@@ -744,7 +716,7 @@ El modelo puede contribuir en tres puntos:
 \midrule
 Paciente no llega en ayunas & Si el score es alto, priorizar HbA1c el mismo día cuando esté disponible. \\
 Capacidad limitada de consulta & Ordenar pacientes por riesgo para usar cupos rápidos en quienes tienen mayor probabilidad de diabetes. \\
-Demora entre resultado y confirmación & Activar circuito corto para scores altos: segunda prueba o cita de confirmación prioritaria. \\
+Demora entre resultado y confirmación & Activar circuito corto para scores altos: segúnda prueba o cita de confirmación prioritaria. \\
 Subregistro y seguimiento débil & Guardar score y predicción como variable de vigilancia para control posterior. \\
 Sobrecarga hospitalaria & Derivar casos de menor riesgo a seguimiento programado en primer nivel y acelerar casos de alto riesgo. \\
 \bottomrule
@@ -769,21 +741,9 @@ explícita:
   dataset Pima Indians. El contexto peruano motiva y justifica el problema,
   pero los resultados no están validados en población peruana; por lo tanto,
   no debe asumirse transferibilidad directa a establecimientos del país.
-  \item \textbf{Preprocesamiento y validación cruzada.} La imputación, la
-  winsorización y el escalado se ajustaron sobre todo el conjunto de
-  entrenamiento antes de la validación cruzada. Aunque no hay fuga del test
-  hacia el train, las métricas de CV pueden ser levemente optimistas; el
-  diseño ideal es encapsular el preprocesamiento en un \code{Pipeline} para
-  que cada fold recalcule sus parámetros.
-  \item \textbf{Selección del stacking.} El trío de modelos base del stacking
-  se eligió a partir de la comparación global, calculada sobre el test. Esto
-  introduce una ventaja optimista en la métrica del stacking. El modelo final
-  seleccionado (Bagging) no depende de esa elección, pues es el mejor de forma
-  individual en todas las métricas.
-  \item \textbf{Coincidencias train-test.} Se detectaron 6 registros idénticos
-  entre train y test (1.9\% del test). Su efecto sobre las métricas es
-  marginal, pero constituye una pequeña fuente de fuga que un flujo estricto
-  debería eliminar.
+  \item \textbf{Preprocesamiento y validación cruzada.} El preprocesamiento se encapsuló en un \code{Pipeline} durante \code{GridSearchCV}, por lo que cada fold recalcula imputación, winsorización, transformación logarítmica y escalado. Aun así, las métricas de CV siguen siendo estimaciones internas del train y no sustituyen la evaluación final en test.
+  \item \textbf{Selección del stacking.} El trío de modelos base del stacking se eligió por ROC AUC promedio en validación cruzada sobre train. Esta estrategia evita usar el test para seleccionar los estimadores, aunque el stacking conserva mayor complejidad operativa que el Bagging individual.
+  \item \textbf{Coincidencias train-test.} Se detectaron 6 registros idénticos entre train y test y se eliminaron del conjunto de prueba antes de la evaluación final. El test final quedó con 302 observaciones.
   \item \textbf{Discretización por cuantiles.} La discretización de glucosa se
   realizó con cuantiles (terciles), útil para comparar riesgo relativo, y no
   con los umbrales clínicos oficiales; por ello, su lectura es exploratoria.
@@ -798,18 +758,14 @@ explícita:
 %=============================================================
 
 \begin{enumerate}[leftmargin=1.3em,itemsep=2pt]
-  \item El pipeline desarrollado es consistente y evita la fuga de información
-  del test hacia el entrenamiento: la imputación, winsorización, transformación
-  y escala se ajustan con el train y luego se aplican al test. El principal
-  margen de mejora metodológico es incorporar ese preprocesamiento dentro de
-  la validación cruzada para reducir el optimismo de las métricas de CV.
+  \item El pipeline desarrollado es consistente y reduce la fuga de información: las coincidencias exactas entre train y test se eliminaron del test, y la imputación, winsorización, transformación logarítmica y escala se encapsularon dentro de \code{Pipeline} para la validación cruzada.
   \item La variable más importante para distinguir pacientes con y sin
   diabetes fue \code{Glucose}, confirmada por EDA, Mann-Whitney U, tasa por
   categorías y SHAP.
-  \item El mejor modelo base fue Regresión Logística, con ROC AUC de 0.8742.
-  \item El mejor modelo global fue Bagging de árboles, con ROC AUC de 0.8975,
-  F1 de 0.7312 y accuracy de 0.8377.
-  \item El Stacking Top-3 fue altamente competitivo, con ROC AUC de 0.8931,
+  \item El mejor modelo base fue Regresión Logística, con ROC AUC de 0.8822.
+  \item El mejor modelo global fue Bagging de árboles, con ROC AUC de 0.8937,
+  F1 de 0.7222 y accuracy de 0.8344.
+  \item El Stacking Top-3 fue altamente competitivo, con ROC AUC de 0.8889,
   pero no superó al Bagging individual.
   \item La integración del modelo con un circuito clínico real debería
   enfocarse en priorización de riesgo, no en diagnóstico autónomo.
@@ -834,10 +790,7 @@ Como trabajo futuro se recomienda validar el modelo con datos locales
 peruanos, incorporar variables de laboratorio como HbA1c o glucosa en ayunas
 cuando estén disponibles, calibrar probabilidades con métodos como Platt o
 isotonic regression, y evaluar fairness por edad y región. En el plano
-metodológico, se recomienda encapsular todo el preprocesamiento dentro de un
-\code{Pipeline} de validación cruzada, seleccionar los componentes del stacking
-mediante ROC AUC promedio en CV sobre el train, y eliminar las coincidencias
-exactas entre train y test. Finalmente, se propone convertir el artefacto
+metodológico, se recomienda ampliar la validación externa, calibrar el umbral de decisión según costos clínicos y monitorear estabilidad temporal del modelo. Finalmente, se propone convertir el artefacto
 exportado \code{mejor\_modelo\_diabetes.pkl} en una herramienta simple de
 inferencia para nuevos pacientes.
 
