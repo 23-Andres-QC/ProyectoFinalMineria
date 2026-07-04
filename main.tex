@@ -51,7 +51,7 @@ Lima, Perú \\
 \maketitle
 
 \begin{abstract}
-El presente informe desarrolla un pipeline completo de minería de datos para la clasificación binaria de diabetes a partir del conjunto Pima Indians Diabetes, motivado por la tendencia creciente de la enfermedad en el Perú. El flujo abarca análisis exploratorio, tratamiento de valores faltantes, control de outliers, transformación y escalado robusto, discretización, entrenamiento de cinco modelos base y cinco de ensamble, un modelo de stacking, evaluación por métricas predictivas e interpretabilidad con SHAP. Tras retirar 6 coincidencias exactas con el train, el conjunto de entrenamiento contiene 2\,460 registros y el de prueba 302. El mejor modelo global fue Bagging de árboles (ROC AUC = 0.8937, F1 = 0.7222, accuracy = 0.8344 en test), seguido de cerca por el Stacking Top-3 (ROC AUC = 0.8889), que no llegó a superarlo. La interpretabilidad SHAP confirma que \code{Glucose} es la variable más influyente, seguida de \code{BMI}, \code{Age} y \code{DiabetesPedigreeFunction}, con una dirección coherente con la evidencia clínica: valores altos empujan la predicción hacia la clase positiva. Como aporte aplicado, el score del modelo se propone como mecanismo de priorización ---ordenar pacientes por riesgo para acelerar su confirmación diagnóstica y seguimiento--- y no como sustituto de la decisión clínica.
+La diabetes crece de forma sostenida en el Perú y presiona a un sistema de salud con capacidad limitada para confirmar y dar seguimiento a los casos. Frente a ese problema, este informe construye y evalúa un pipeline completo de minería de datos para clasificar diabetes a partir del conjunto Pima Indians Diabetes. El flujo sigue una secuencia ordenada: primero se explora y depura la información ---tratamiento de valores faltantes, control de outliers, transformación y escalado robusto---; luego se comparan cinco modelos base y cinco de ensamble, además de un modelo de stacking, bajo un mismo protocolo de validación; y, por último, se interpretan las predicciones con SHAP. Para evitar la fuga de información, se retiraron 6 coincidencias exactas entre las particiones, con lo que el entrenamiento quedó en 2\,460 registros y la prueba en 302. El mejor modelo fue Bagging de árboles (ROC AUC = 0.8937, F1 = 0.7222, accuracy = 0.8344 en test), que superó por un margen mínimo al Stacking Top-3 (ROC AUC = 0.8889). El análisis con SHAP muestra que \code{Glucose} es, con diferencia, la variable más influyente ---seguida de \code{BMI}, \code{Age} y \code{DiabetesPedigreeFunction}--- y que su efecto es clínicamente coherente: a mayor valor, mayor probabilidad predicha de diabetes. A partir de ese resultado, se propone emplear el score del modelo como mecanismo de priorización ---ordenar a los pacientes por riesgo para acelerar su confirmación diagnóstica y seguimiento--- y no como sustituto de la decisión clínica.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -60,7 +60,7 @@ diabetes, minería de datos, machine learning, clasificación, Bagging, XGBoost,
 
 \section{Introducción}
 
-La diabetes mellitus es una enfermedad crónica de alta relevancia sanitaria por su asociación con complicaciones cardiovasculares, renales, neurológicas y visuales, y constituye una de las principales enfermedades no transmisibles a nivel global \cite{idf2021,who2021}. En el Perú, la diabetes muestra una trayectoria ascendente: según la investigación inicial del proyecto, la prevalencia autorreportada en personas de 15 años a más pasó de 3.9\% en 2019 a 4.5\% en 2020, 4.9\% en 2021 y 5.5\% en 2023. Este cambio equivale a un aumento de 1.6 puntos porcentuales y a un crecimiento relativo aproximado de 41\% frente a 2019. El último dato nacional explícito revisado corresponde a ENDES 2023, resumido por MINSA como cerca de 1.3 millones de peruanos mayores de 15 años viviendo con diabetes \cite{minsa2024,inei2023}.
+La diabetes mellitus es una enfermedad crónica de alta relevancia sanitaria por su asociación con complicaciones cardiovasculares, renales, neurológicas y visuales, y constituye una de las principales enfermedades no transmisibles a nivel global \cite{idf2021,who2021}. En el Perú, la diabetes muestra una trayectoria ascendente: la prevalencia autorreportada en personas de 15 años a más pasó de 3.9\% en 2019 a 4.5\% en 2020, 4.9\% en 2021 y 5.5\% en 2023. Este cambio equivale a un aumento de 1.6 puntos porcentuales y a un crecimiento relativo aproximado de 41\% frente a 2019. El último dato nacional explícito revisado corresponde a ENDES 2023, resumido por MINSA como cerca de 1.3 millones de peruanos mayores de 15 años viviendo con diabetes \cite{minsa2024,inei2023}.
 
 La carga no es únicamente epidemiológica. El CDC Perú reportó 54\,986 casos registrados entre enero de 2023 y junio de 2024 y advirtió subregistro; para 2025 la red de notificación incluía 1\,600 establecimientos, de los cuales 1\,440 correspondían al primer nivel de atención \cite{cdc2024,cdc2025}. Esto evidencia un sistema en expansión, pero todavía con brechas de registro, confirmación diagnóstica y seguimiento.
 
@@ -70,9 +70,7 @@ El objetivo del proyecto es desarrollar y evaluar un pipeline de minería de dat
 
 \section{Contexto Peruano}
 
-La investigación inicial evidencia que el problema de diabetes en el Perú no solo es clínico, sino también operativo. Los datos revisados señalan una mayor carga en zonas urbanas y costeras, una prevalencia particularmente alta en adultos mayores y una red de vigilancia epidemiológica todavía en expansión. En 2022, la prevalencia fue mayor en la Costa (6.0\%) que en la Selva (4.5\%) y la Sierra (3.0\%). En adultos de 60 años a más, la diabetes alcanzó 14.0\% tanto en 2023 como en 2024, lo que aumenta la presión sobre consultas, laboratorios y programas de control de crónicos \cite{pp0018,inei_adulto_mayor}.
-
-Las pruebas diagnósticas más relevantes en la práctica peruana son la glucemia en ayunas, la hemoglobina glicosilada HbA1c y la prueba de tolerancia oral a la glucosa. La investigación señala umbrales clínicos habituales: glucemia en ayunas $\geq 126$ mg/dL, HbA1c $\geq 6.5\%$ o glucosa a las dos horas $\geq 200$ mg/dL para diabetes. La HbA1c tiene una ventaja operativa importante porque no requiere ayuno; sin embargo, su disponibilidad puede variar según la capacidad del establecimiento.
+La carga de diabetes en el Perú no se distribuye de manera uniforme y ejerce una presión creciente sobre el sistema de salud. La prevalencia es mayor en la Costa (6.0\% en 2022) que en la Selva (4.5\%) y la Sierra (3.0\%), y se concentra sobre todo en los adultos mayores, entre quienes alcanzó 14.0\% en 2023 y 2024. A esta mayor demanda se suma una red de vigilancia epidemiológica todavía en expansión, lo que tensiona consultas, laboratorios y programas de control de enfermedades crónicas \cite{pp0018,inei_adulto_mayor}. La Tabla~\ref{tab:contexto_peru} resume los principales indicadores nacionales revisados.
 
 \begin{table}[H]
 \centering
@@ -96,7 +94,7 @@ Brecha operativa & No existe un promedio nacional público uniforme desde primer
 
 \subsection{Métricas Operativas de Referencia}
 
-En la práctica peruana, el diagnóstico se apoya en tres pruebas centrales. La glucemia en ayunas es ampliamente disponible, pero exige que el paciente llegue en ayunas; la HbA1c no requiere ayuno y puede reducir visitas; la PTOG de 75 g requiere permanencia mínima de dos horas. La investigación inicial también encontró que, en laboratorios privados peruanos, glucosa, HbA1c y PTOG suelen entregarse en menos de 24 horas o en 1 día hábil, y que en un hospital público grande los exámenes generales se reportan en 1 día hábil \cite{multilab_glucosa,multilab_hba1c,loayza2025}.
+En la práctica peruana, el diagnóstico se apoya en tres pruebas centrales, cuyos umbrales e implicancias operativas se resumen en la Tabla~\ref{tab:pruebas_operativas}: la glucemia en ayunas es ampliamente disponible pero exige que el paciente llegue en ayunas; la HbA1c no requiere ayuno y puede reducir visitas; y la PTOG de 75 g requiere una permanencia mínima de dos horas. Los tiempos de entrega no suelen ser el cuello de botella: en laboratorios privados, glucosa, HbA1c y PTOG se reportan en menos de 24 horas o en 1 día hábil, y en un hospital público grande los exámenes generales se entregan en 1 día hábil \cite{multilab_glucosa,multilab_hba1c,loayza2025}. El problema, por tanto, está menos en la velocidad del laboratorio y más en el circuito: el ayuno, las visitas repetidas y la continuidad del seguimiento.
 
 \begin{table}[H]
 \centering
@@ -118,7 +116,7 @@ Para consulta externa, no se encontró un indicador nacional reciente de pacient
 
 \subsection{Rol Propuesto del Modelo}
 
-El modelo desarrollado no pretende diagnosticar de forma autónoma. Su función aplicada es actuar como un \textbf{filtro de priorización}: ordenar pacientes por probabilidad estimada de diabetes y recomendar confirmación rápida para los casos con mayor score. Es importante precisar que el cálculo del score requiere las variables de entrada del modelo, incluida \code{Glucose}; por ello, el modelo no decide si tomar o no una primera prueba, sino que prioriza la confirmación diagnóstica y el seguimiento una vez que se dispone de una medición inicial. En establecimientos con HbA1c disponible, el paciente de alto riesgo podría pasar a prueba el mismo día aunque no haya llegado en ayunas. En establecimientos sin HbA1c, el score puede priorizar una cita corta para glucemia en ayunas o PTOG. Así, el valor del modelo está en reducir esperas, visitas innecesarias y pérdida de seguimiento, no en reemplazar el criterio clínico.
+El modelo desarrollado no pretende diagnosticar de forma autónoma, sino actuar como un \textbf{filtro de priorización}: ordenar a los pacientes por probabilidad estimada de diabetes para acelerar la confirmación de los casos de mayor riesgo. Conviene precisar un límite del enfoque desde ahora: el score se calcula a partir de las variables de entrada del modelo ---incluida \code{Glucose}---, de modo que no decide si solicitar una primera prueba, sino que ordena la confirmación diagnóstica y el seguimiento una vez disponible una medición inicial. Bajo esa premisa, el valor del modelo está en reducir esperas, visitas innecesarias y pérdidas de seguimiento; la forma concreta de insertarlo en el circuito de atención se detalla más adelante (Sección~\ref{sec:impacto}).
 
 \section{Revisión de Literatura}
 
@@ -130,7 +128,7 @@ No obstante, el rendimiento predictivo no es suficiente en salud. Un modelo de a
 
 \section{Datos y Variables}
 
-El análisis utiliza los archivos \code{Training.csv} y \code{Testing.csv}, correspondientes a una versión del dataset Pima Indians Diabetes disponible en Kaggle, ya particionada en entrenamiento y prueba \cite{kaggle}. El conjunto de entrenamiento contiene 2\,460 observaciones y 9 columnas. El archivo de prueba original contenía 308 observaciones y 9 columnas; tras verificar coincidencias exactas con el train se eliminaron 6 registros idénticos, por lo que el test final usado para evaluación contiene 302 observaciones. No se encontraron filas duplicadas dentro de cada archivo.
+El estudio parte de dos archivos, \code{Training.csv} y \code{Testing.csv}, que corresponden a una versión del dataset Pima Indians Diabetes ya particionada en entrenamiento y prueba \cite{kaggle}. El entrenamiento reúne 2\,460 observaciones y el archivo de prueba, originalmente, 308; ambos con 9 columnas y sin filas duplicadas internas. Antes de usarlos se hizo una verificación necesaria para no inflar los resultados: se buscaron coincidencias exactas entre los dos conjuntos y se eliminaron del test los 6 registros que también aparecían en el train, ya que evaluar el modelo sobre datos que ya vio durante el entrenamiento sobreestimaría su desempeño. El test final quedó, así, con 302 observaciones disjuntas del entrenamiento.
 
 \begin{table}[H]
 \centering
@@ -161,13 +159,15 @@ El análisis utiliza los archivos \code{Training.csv} y \code{Testing.csv}, corr
   \label{fig:outcome}
 \end{figure}
 
-La variable objetivo presenta desbalance moderado: en el conjunto de entrenamiento hay 1\,519 registros de clase 0 y 941 registros de clase 1. Aunque no es un desbalance extremo, sí justifica el uso de métricas como ROC AUC, F1, recall, kappa y lift, además de accuracy.
+La variable objetivo, \code{Outcome}, está moderadamente desbalanceada (Fig.~\ref{fig:outcome}): el entrenamiento tiene 1\,519 casos sin diabetes (clase 0) frente a 941 con diabetes (clase 1), una proporción cercana a 62/38. El desbalance no es extremo, pero es suficiente para que el accuracy por sí solo resulte engañoso ---un clasificador que siempre dijera ``sin diabetes'' acertaría el 62\% de las veces sin aprender nada útil---; por eso la evaluación se apoya además en ROC AUC, F1, recall, kappa y lift, métricas menos sensibles a la clase mayoritaria.
 
 \section{Metodología}
 
+El desarrollo sigue el orden habitual de un proyecto de minería de datos, en el que cada etapa prepara la siguiente. Se parte de un análisis exploratorio que caracteriza las variables y revela sus problemas (asimetrías, faltantes, outliers); a partir de ese diagnóstico se imputan los valores faltantes, se controlan los outliers y se transforman y escalan las variables; con los datos ya depurados se entrenan y comparan los modelos bajo un mismo protocolo de validación; y, por último, se interpreta el modelo ganador. Las subsecciones siguientes recorren esa secuencia en el mismo orden.
+
 \subsection{Análisis Exploratorio}
 
-El análisis univariado busca caracterizar la forma de cada variable antes de modelar. Se calcularon media, mediana, moda, cuartiles, IQR, coeficiente de variación, asimetría y curtosis. Para no distorsionar los estadísticos, los ceros biológicamente imposibles en \code{Glucose}, \code{BloodPressure}, \code{SkinThickness}, \code{Insulin} y \code{BMI} se trataron como faltantes antes del análisis descriptivo. Dos hallazgos guían las decisiones posteriores: \code{Insulin} es la variable más dispersa y con mayor asimetría positiva (media muy por encima de la mediana, lo que anticipa outliers y justifica una transformación logarítmica), mientras que \code{Glucose} es la más simétrica y equilibrada (media $\approx$ mediana), lo que la hace un predictor estable.
+El análisis univariado busca caracterizar la forma de cada variable antes de modelar. Se calcularon media, mediana, moda, cuartiles, IQR, coeficiente de variación, asimetría y curtosis. Para no distorsionar los estadísticos, cualquier cero biológicamente imposible en \code{Glucose}, \code{BloodPressure}, \code{SkinThickness}, \code{Insulin} y \code{BMI} se trató como faltante antes del análisis descriptivo. En esta versión del dataset los valores ausentes ya vienen codificados como \code{NaN} ---no como ceros, a diferencia del Pima clásico---, por lo que este paso opera sobre todo como salvaguarda. Dos hallazgos guían las decisiones posteriores: \code{Insulin} es la variable más dispersa y con mayor asimetría positiva (media muy por encima de la mediana, lo que anticipa outliers y justifica una transformación logarítmica), mientras que \code{Glucose} es la más simétrica y equilibrada (media $\approx$ mediana), lo que la hace un predictor estable.
 
 \begin{figure}[H]
   \centering
@@ -209,7 +209,7 @@ El tamaño de efecto de Mann-Whitney (Fig.~\ref{fig:mann_whitney}) ordena la cap
 
 \subsection{Tratamiento de Faltantes}
 
-El conjunto de entrenamiento no contiene ceros en las variables fisiológicas críticas, pero sí contiene valores \code{NaN}. La imputación se diseñó con criterio idéntico para train y test: se reemplazan ceros imposibles por \code{NaN} y luego se imputan los faltantes con medianas globales calculadas solo sobre el conjunto de entrenamiento. Este diseño evita la fuga de información del test hacia el entrenamiento y no usa \code{Outcome} para imputar. Para la selección de hiperparámetros, la imputación, winsorización, transformación logarítmica y escalado se encapsularon dentro de un \code{Pipeline}, de modo que cada fold recalcula sus propios parámetros.
+Coherentemente con lo anterior, el train no almacena los faltantes como ceros sino como valores \code{NaN}, cuya magnitud por variable se muestra en la Tabla~\ref{tab:faltantes}. La imputación se diseñó con criterio idéntico para train y test: se reemplaza cualquier cero imposible por \code{NaN} y luego se imputan los faltantes con medianas globales calculadas solo sobre el conjunto de entrenamiento. Este diseño evita la fuga de información del test hacia el entrenamiento y no usa \code{Outcome} para imputar. Para la selección de hiperparámetros, la imputación, winsorización, transformación logarítmica y escalado se encapsularon dentro de un \code{Pipeline}, de modo que cada fold recalcula sus propios parámetros.
 
 \begin{table}[H]
 \centering
@@ -300,7 +300,7 @@ MLP & 0.8013 & 0.6629 & 0.5221 & 0.8465 & 0.6931 \\
 \end{tabular}
 \end{table}
 
-La Regresión Logística fue el mejor modelo base, con ROC AUC de 0.8822 y accuracy de 0.8179. Este resultado es relevante porque muestra que una frontera lineal regularizada puede competir muy bien en datos tabulares con señales clínicas relativamente claras.
+Entre los cinco modelos base (Tabla~\ref{tab:base}), la Regresión Logística se impuso con claridad, encabezando todas las métricas con un ROC AUC de 0.8822 y accuracy de 0.8179. El dato es más interesante de lo que parece: una frontera lineal regularizada superó a alternativas más flexibles como SVM RBF o la red MLP, lo que sugiere que las señales clínicas del problema son relativamente separables y no exigen, por sí solas, modelos muy complejos. Queda por ver si los ensambles logran exprimir algo más de esa señal.
 
 \begin{figure}[H]
   \centering
@@ -337,7 +337,7 @@ LightGBM & 0.8278 & 0.7204 & 0.5962 & 0.8651 & 0.7302 \\
 \end{tabular}
 \end{table}
 
-Bagging de árboles fue el mejor ensamble y también el mejor modelo global, con el mejor valor en todas las métricas reportadas: accuracy, F1, kappa, ROC AUC y Gini. LightGBM fue el ensamble más cercano en F1 y accuracy, mientras que XGBoost fue el segundo mejor ensamble en ROC AUC.
+La respuesta a esa pregunta aparece en la Tabla~\ref{tab:ensambles}: al pasar a los ensambles, Bagging de árboles tomó la delantera y se convirtió, además, en el mejor modelo de todo el estudio, encabezando las cinco métricas reportadas (accuracy, F1, kappa, ROC AUC y Gini). La competencia, sin embargo, fue estrecha ---LightGBM quedó muy cerca en F1 y accuracy, y XGBoost fue el segundo mejor en ROC AUC---, lo que ya anticipa que la ventaja del ganador no es amplia y conviene contrastarla con un enfoque aún más elaborado.
 
 \begin{figure}[H]
   \centering
@@ -386,7 +386,7 @@ Bagging de árboles fue el mejor ensamble y también el mejor modelo global, con
   \label{fig:métricas_globales}
 \end{figure}
 
-El Stacking Top-3 combinó LightGBM, Bagging y XGBoost, usando Regresión Logística como meta-aprendiz. Alcanzó ROC AUC de 0.8889, apenas 0.0048 por debajo del Bagging individual. Por tanto, aunque el stacking es competitivo, no se selecciona como modelo final porque no mejora al ganador.
+Ese enfoque más elaborado es el Stacking Top-3, que combinó los tres modelos con mejor ROC AUC en validación cruzada (LightGBM, Bagging y XGBoost) sobre una Regresión Logística como meta-aprendiz. El resultado, no obstante, refuerza lo anterior: alcanzó un ROC AUC de 0.8889, apenas 0.0048 por debajo del Bagging individual. El ranking global (Tabla~\ref{tab:ranking}) lo confirma dejando al Bagging en primer lugar. La lectura es clara: añadir complejidad no rindió mejora, de modo que se conserva el Bagging como modelo final por ser igual de preciso y más simple de operar.
 
 \begin{figure}[H]
   \centering
@@ -452,11 +452,12 @@ Los resultados muestran que un preprocesamiento cuidadoso ---imputación y lími
 
 El hecho de que Bagging supere ligeramente a XGBoost, LightGBM y Stacking indica que, para este dataset, reducir varianza mediante múltiples árboles bootstrap fue más efectivo que los modelos boosting más complejos. La diferencia con el Stacking es mínima (0.0048 en ROC AUC), por lo que ambos son competitivos; se prefirió Bagging por su mayor ROC AUC y F1 y su menor complejidad operativa. Es esperable, además, que las diferencias tan estrechas entre los modelos del top se estabilicen ---o incluso cambien de orden--- con un volumen de datos mayor, lo que refuerza la idea de que la elección final debe leerse junto con sus limitaciones y no como una ventaja definitiva.
 
-En términos clínicos, el modelo no reemplaza las pruebas diagnósticas. Su valor está en la priorización: ordenar pacientes por riesgo y apoyar circuitos de confirmación con glucemia, HbA1c o prueba de tolerancia oral a la glucosa. Esto dialoga directamente con la investigación inicial sobre Perú, donde una de las brechas principales no es la falta de criterios diagnósticos, sino la heterogeneidad en tiempos, disponibilidad de pruebas y seguimiento.
+En términos clínicos, el modelo no reemplaza las pruebas diagnósticas. Su valor está en la priorización: ordenar pacientes por riesgo y apoyar circuitos de confirmación con glucemia, HbA1c o prueba de tolerancia oral a la glucosa. Esto dialoga directamente con el contexto peruano descrito, donde una de las brechas principales no es la falta de criterios diagnósticos, sino la heterogeneidad en tiempos, disponibilidad de pruebas y seguimiento.
 
 \subsection{Impacto Esperado en el Circuito de Atención}
+\label{sec:impacto}
 
-La investigación inicial muestra que el diagnóstico puede resolverse rápido cuando hay laboratorio disponible, pero el sistema no lo logra de manera homogénea. Las demoras aparecen cuando el paciente no llega en ayunas, cuando debe regresar para una segunda prueba, cuando no hay HbA1c disponible o cuando se pierde continuidad entre resultado anormal y confirmación médica. El modelo puede contribuir en tres puntos:
+Como se describió en el contexto peruano, el diagnóstico puede resolverse rápido cuando hay laboratorio disponible, pero el sistema no lo logra de manera homogénea. Las demoras aparecen cuando el paciente no llega en ayunas, cuando debe regresar para una segunda prueba, cuando no hay HbA1c disponible o cuando se pierde continuidad entre resultado anormal y confirmación médica. El modelo puede contribuir en tres puntos:
 
 \begin{enumerate}[leftmargin=1.3em,itemsep=1pt]
   \item \textbf{Triaje tras la medición inicial:} una vez registradas las variables de entrada del paciente ---incluida una medición de glucosa---, usar el score para clasificar a los pacientes en riesgo alto, medio y bajo.
@@ -510,7 +511,7 @@ El estudio presenta varias limitaciones que conviene declarar de forma explícit
 
 \section{Trabajo Futuro}
 
-Como trabajo futuro se recomienda validar el modelo con datos locales peruanos, incorporar variables de laboratorio como HbA1c o glucosa en ayunas cuando estén disponibles, calibrar probabilidades con métodos como Platt o isotonic regression, y evaluar fairness por edad y región. En el plano metodológico, se recomienda ampliar la validación externa, calibrar el umbral de decisión según costos clínicos y monitorear estabilidad temporal del modelo. Finalmente, se propone convertir el artefacto exportado \code{mejor\_modelo\_diabetes.pkl} en una herramienta simple de inferencia para nuevos pacientes.
+El trabajo futuro se organiza en tres frentes que van de lo más urgente a lo más aplicado. El primero es la \textbf{validez externa}, condición para cualquier uso real: validar el modelo con datos locales peruanos, evaluar su equidad (\emph{fairness}) por edad y región, y monitorear su estabilidad en el tiempo, ya que un modelo entrenado en otra población tiende a degradarse al cambiar de contexto. El segundo frente busca \textbf{enriquecer y afinar el modelo}: incorporar variables de laboratorio como HbA1c o glucosa en ayunas cuando estén disponibles, calibrar las probabilidades con métodos como Platt o \emph{isotonic regression} ---de modo que el score pueda leerse como una probabilidad real y no solo como un ordenamiento--- y fijar el umbral de decisión según el costo clínico de los falsos positivos y negativos. El tercer frente es la \textbf{puesta en uso}: convertir el artefacto exportado \code{mejor\_modelo\_diabetes.pkl} en una herramienta simple de inferencia que reciba los datos de un paciente y devuelva su score de priorización, cerrando el ciclo entre el análisis y la práctica clínica.
 
 \section*{Agradecimientos}
 
